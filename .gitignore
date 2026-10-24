@@ -1,0 +1,22 @@
+# Залежності та збірка
+node_modules/
+dist/
+coverage/
+
+# Змінні середовища (секрети не зберігаються в репозиторії)
+.env
+.env.*
+!.env.example
+
+# Журнали
+*.log
+npm-debug.log*
+
+# IDE та ОС
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Тимчасові файли Microsoft Office
+~$*

@@ -1,0 +1,11 @@
+// Схема бази даних Session (Prisma ORM, PostgreSQL).
+// Моделі User, Slot і Booking додаються на етапі проєктування бази даних.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}

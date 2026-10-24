@@ -1,0 +1,20 @@
+{
+  "name": "session",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Session — вебсервіс запису студентів на консультації з викладачами (навчальний прототип)",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client run dev",
+    "lint": "npm --prefix server run lint && npm --prefix client run lint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
