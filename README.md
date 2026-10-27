@@ -10,8 +10,8 @@
 ```
 client/              клієнтська частина (React, Vite, MUI)
 server/              серверна частина (Express, Prisma)
-  prisma/            схема бази даних Prisma
-  scripts/           службові скрипти (перевірка підключення до БД)
+  prisma/            схема БД (schema.prisma), міграції (migrations/), початкові дані (seed.js)
+  scripts/           службові скрипти (перевірка підключення, міграцій та обмежень БД)
   src/               код API
 docker-compose.yml   контейнер PostgreSQL для розробки
 .env.example         змінні для контейнера PostgreSQL
@@ -32,8 +32,31 @@ server/.env.example  змінні серверної частини (DATABASE_UR
 3. Запустіть PostgreSQL: відкрийте `docker-compose.yml` у PyCharm і натисніть ▶ біля `services:`
    (або вікно **Services** → Docker → Docker Compose).
 4. Перевірте підключення сервера до БД: `npm --prefix server run db:check`.
-5. Запустіть сервер: `npm run dev:server` → http://localhost:3000/api/health
-6. Запустіть клієнт: `npm run dev:client` → http://localhost:5173
+5. Застосуйте міграції: `npm --prefix server run prisma:migrate`.
+6. Задайте `ADMIN_EMAIL` і `ADMIN_PASSWORD` у `server/.env` (за бажанням `SEED_DEMO_PASSWORD`)
+   і створіть початкові дані: `npm --prefix server run db:seed`.
+7. Запустіть сервер: `npm run dev:server` → http://localhost:3000/api/health
+8. Запустіть клієнт: `npm run dev:client` → http://localhost:5173
+
+## База даних
+
+Сутності `User`, `Slot`, `Booking` описано в `server/prisma/schema.prisma` (ТЗ, розділ 9).
+Структура БД змінюється лише через міграції Prisma:
+
+- `npm --prefix server run prisma:migrate` — створити й застосувати міграцію після зміни схеми;
+- `npm --prefix server run prisma:status` — стан міграцій;
+- `npm --prefix server run db:seed` — адміністратор і (якщо задано `SEED_DEMO_PASSWORD`) тестові
+  викладачі `teacher1/2@session.local`, студенти `student1/2@session.local` та вільні слоти;
+- `npm --prefix server run db:check-migrations` — частковий індекс `Booking_active_slot_unique` є в БД
+  і жодна міграція його не видаляє;
+- `npm --prefix server run db:check-constraints` — перевірка унікальності email, одного активного
+  запису на слот і заборони видалення пов'язаних записів (у транзакції з відкатом, дані не змінюються).
+
+Частковий унікальний індекс `Booking_active_slot_unique` (не більше одного запису `PENDING` або
+`CONFIRMED` на слот) додано вручну до SQL міграції `init`, бо Prisma не описує такі індекси в схемі.
+Після створення кожної нової міграції (`prisma migrate dev --create-only` для перегляду SQL)
+переконайтеся, що вона не містить `DROP INDEX "Booking_active_slot_unique"`, і запустіть
+`db:check-migrations`.
 
 ## Перевірки працездатності
 

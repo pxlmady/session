@@ -1,5 +1,7 @@
-// Схема бази даних Session (Prisma ORM, PostgreSQL).
-// Моделі User, Slot і Booking додаються на етапі проєктування бази даних.
+// Схема бази даних Session (Prisma ORM, PostgreSQL), ТЗ розділ 9.4.
+// Частковий унікальний індекс "Booking_active_slot_unique" засобами Prisma не описується:
+// він створюється SQL-командою в міграції init. Перед застосуванням кожної нової міграції
+// перевіряйте, що вона його не видаляє (npm run db:check-migrations).
 
 generator client {
   provider = "prisma-client-js"
@@ -8,4 +10,71 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum SlotStatus {
+  FREE
+  BOOKED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  // Зберігається в нижньому регістрі (BR-01)
+  email        String    @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  department   String?
+  studentGroup String?
+  slots        Slot[]    @relation("TeacherSlots")
+  bookings     Booking[] @relation("StudentBookings")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Slot {
+  id        Int        @id @default(autoincrement())
+  // Restrict: викладача, який має слоти, видалити не можна (BR-06)
+  teacher   User       @relation("TeacherSlots", fields: [teacherId], references: [id], onDelete: Restrict)
+  teacherId Int
+  startAt   DateTime
+  endAt     DateTime
+  location  String?
+  status    SlotStatus @default(FREE)
+  bookings  Booking[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([teacherId, startAt])
+}
+
+model Booking {
+  id             Int           @id @default(autoincrement())
+  // Restrict: слот із записами не видаляється, а переводиться в CANCELLED (9.2)
+  slot           Slot          @relation(fields: [slotId], references: [id], onDelete: Restrict)
+  slotId         Int
+  // Restrict: студента, який має записи, видалити не можна (BR-06)
+  student        User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Restrict)
+  studentId      Int
+  topic          String
+  status         BookingStatus @default(PENDING)
+  reminderSentAt DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([studentId])
+  @@index([slotId])
 }
