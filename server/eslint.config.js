@@ -13,8 +13,12 @@ export default [
       globals: globals.node,
     },
     rules: {
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
+  },
+  {
+    files: ['tests/**/*.js'],
+    languageOptions: { globals: globals.jest },
   },
   prettier,
 ];

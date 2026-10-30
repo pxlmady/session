@@ -12,7 +12,8 @@ client/              клієнтська частина (React, Vite, MUI)
 server/              серверна частина (Express, Prisma)
   prisma/            схема БД (schema.prisma), міграції (migrations/), початкові дані (seed.js)
   scripts/           службові скрипти (перевірка підключення, міграцій та обмежень БД)
-  src/               код API
+  src/               код API: routes → middleware → controllers → services → Prisma
+  tests/             інтеграційні тести API (Jest, Supertest)
 docker-compose.yml   контейнер PostgreSQL для розробки
 .env.example         змінні для контейнера PostgreSQL
 server/.env.example  змінні серверної частини (DATABASE_URL тощо)
@@ -33,7 +34,8 @@ server/.env.example  змінні серверної частини (DATABASE_UR
    (або вікно **Services** → Docker → Docker Compose).
 4. Перевірте підключення сервера до БД: `npm --prefix server run db:check`.
 5. Застосуйте міграції: `npm --prefix server run prisma:migrate`.
-6. Задайте `ADMIN_EMAIL` і `ADMIN_PASSWORD` у `server/.env` (за бажанням `SEED_DEMO_PASSWORD`)
+6. Задайте `JWT_SECRET` (щонайменше 32 символи), `ADMIN_EMAIL` і `ADMIN_PASSWORD` у `server/.env`
+   (за бажанням `SEED_DEMO_PASSWORD`; див. `server/.env.example`)
    і створіть початкові дані: `npm --prefix server run db:seed`.
 7. Запустіть сервер: `npm run dev:server` → http://localhost:3000/api/health
 8. Запустіть клієнт: `npm run dev:client` → http://localhost:5173
@@ -57,6 +59,27 @@ server/.env.example  змінні серверної частини (DATABASE_UR
 Після створення кожної нової міграції (`prisma migrate dev --create-only` для перегляду SQL)
 переконайтеся, що вона не містить `DROP INDEX "Booking_active_slot_unique"`, і запустіть
 `db:check-migrations`.
+
+## Автентифікація та безпека
+
+| Метод та шлях             | Призначення                               | Доступ          |
+| ------------------------- | ----------------------------------------- | --------------- |
+| `POST /api/auth/register` | Реєстрація (роль `STUDENT` або `TEACHER`) | Публічний       |
+| `POST /api/auth/login`    | Вхід, отримання JWT (`{ token, user }`)   | Публічний       |
+| `GET /api/auth/me`        | Дані поточного користувача                | Автентифіковані |
+
+- Захищені запити містять заголовок `Authorization: Bearer <token>`; строк дії токена — 24 години.
+- Middleware `auth` перевіряє токен і завантажує користувача з БД, `requireRole(...)` перевіряє роль.
+- Паролі зберігаються лише як bcrypt-хеш (вартість 10); відповіді API не містять `passwordHash`.
+- Вхідні дані перевіряються схемами Zod (`server/src/validation`), невідомі поля відкидаються.
+- Помилки мають єдиний формат `{ "error": { "code", "message", "details": [] } }`.
+- helmet (заголовки безпеки), CORS лише для `CLIENT_URL`, не більше 10 спроб реєстрації/входу
+  за 15 хвилин з однієї IP-адреси (429).
+
+## Тести
+
+`npm --prefix server test` запускає інтеграційні тести на окремій БД з `TEST_DATABASE_URL`
+(контейнер PostgreSQL має бути запущений; міграції до тестової БД застосовуються автоматично).
 
 ## Перевірки працездатності
 

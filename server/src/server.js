@@ -1,8 +1,8 @@
 import { env } from './config/env.js';
-import { app } from './app.js';
+import { createApp } from './app.js';
 import { prisma } from './lib/prisma.js';
 
-const server = app.listen(env.port, () => {
+const server = createApp().listen(env.port, () => {
   console.log(`Сервер Session запущено: http://localhost:${env.port}/api/health`);
 });
 

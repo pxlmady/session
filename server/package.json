@@ -10,6 +10,7 @@
     "start": "node src/server.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "db:check": "node scripts/check-db.js",
     "db:check-migrations": "node scripts/check-migrations.js",
     "db:check-constraints": "node scripts/check-constraints.js",
@@ -28,15 +29,22 @@
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.7.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.13.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.0.0",
-    "prisma": "^6.19.3"
+    "jest": "^30.5.2",
+    "prisma": "^6.19.3",
+    "supertest": "^7.3.1"
   },
   "engines": {
     "node": ">=22.12.0"
