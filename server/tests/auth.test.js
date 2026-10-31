@@ -214,8 +214,8 @@ describe('TC-03. Доступ до захищених ендпоінтів (FR-0
   });
 
   describe('requireRole', () => {
-    // Маршрути зі слотами й бронюваннями з'являться на наступних етапах,
-    // тому роль перевіряємо на тестовому маршруті з тими самими middleware
+    // Middleware перевіряються окремо на тестовому маршруті; на реальних ендпоінтах
+    // (POST /api/slots, POST /api/bookings тощо) 401/403 перевіряють slots.test.js і bookings.test.js
     const roleApp = express();
     roleApp.get('/teacher-only', auth, requireRole('TEACHER'), (req, res) => {
       res.json({ ok: true, role: req.user.role });
