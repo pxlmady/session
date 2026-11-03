@@ -16,3 +16,10 @@ export const createBookingSchema = z.object({
     .min(3, 'Тема запитання має містити від 3 до 500 символів')
     .max(500, 'Тема запитання має містити від 3 до 500 символів'),
 });
+
+// FR-18, FR-19: фільтр «Мої записи» – майбутні (upcoming) або минулі (past) консультації
+export const myBookingsQuerySchema = z.object({
+  period: z
+    .enum(['upcoming', 'past'], { error: 'Період: очікується upcoming або past' })
+    .optional(),
+});

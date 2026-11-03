@@ -1,6 +1,6 @@
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
-import { bookingSelect } from '../lib/selects.js';
+import { bookingSelect, bookingStudentSelect, teacherSelect } from '../lib/selects.js';
 
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'];
 
@@ -49,9 +49,80 @@ export async function createBooking(studentId, { slotId, topic }) {
   }
 }
 
-// FR-20, BR-05: скасування активного запису студентом (власником запису)
-// або викладачем (власником слота) до початку консультації; слот повертається у FREE
-export async function cancelBooking(user, bookingId) {
+// Дані запису для списку «Мої записи» (FR-18, FR-19): слот із викладачем і студент.
+// Студент отримує лише власні записи, викладач – лише записи на власні слоти.
+const myBookingSelect = {
+  ...bookingSelect,
+  slot: {
+    select: {
+      id: true,
+      startAt: true,
+      endAt: true,
+      location: true,
+      status: true,
+      teacher: { select: teacherSelect },
+    },
+  },
+  student: { select: bookingStudentSelect },
+};
+
+// FR-18, FR-19: власні записи студента або записи на слоти викладача.
+// period: 'upcoming' – консультація ще не завершилася (endAt > зараз), 'past' – завершилася;
+// без period повертаються всі записи. Упорядкування за startAt слота за зростанням (п. 10.1).
+export function listMyBookings(user, period) {
+  const owner = user.role === 'STUDENT' ? { studentId: user.id } : {};
+  const slotWhere = user.role === 'TEACHER' ? { teacherId: user.id } : {};
+  const now = new Date();
+  if (period === 'upcoming') slotWhere.endAt = { gt: now };
+  if (period === 'past') slotWhere.endAt = { lte: now };
+
+  return prisma.booking.findMany({
+    where: { ...owner, slot: slotWhere },
+    orderBy: [{ slot: { startAt: 'asc' } }, { id: 'asc' }],
+    select: myBookingSelect,
+  });
+}
+
+// Допустимі переходи статусу запису (ТЗ, п. 9.3):
+// confirm – PENDING → CONFIRMED (викладач, FR-21);
+// reject  – PENDING → CANCELLED зі звільненням слота (викладач, FR-21);
+// cancel  – PENDING / CONFIRMED → CANCELLED зі звільненням слота (студент або викладач, FR-20).
+// Усі дії можливі лише до початку консультації (BR-05).
+const TRANSITIONS = {
+  confirm: {
+    from: ['PENDING'],
+    to: 'CONFIRMED',
+    releaseSlot: false,
+    roles: ['TEACHER'],
+    invalidMessage: 'Підтвердити можна лише запис, що очікує підтвердження',
+    startedMessage: 'Консультація вже розпочалася, підтвердити запис неможливо',
+  },
+  reject: {
+    from: ['PENDING'],
+    to: 'CANCELLED',
+    releaseSlot: true,
+    roles: ['TEACHER'],
+    invalidMessage: 'Відхилити можна лише запис, що очікує підтвердження',
+    startedMessage: 'Консультація вже розпочалася, відхилити запис неможливо',
+  },
+  cancel: {
+    from: ACTIVE_BOOKING_STATUSES,
+    to: 'CANCELLED',
+    releaseSlot: true,
+    roles: ['STUDENT', 'TEACHER'],
+    invalidMessage: 'Запис уже скасовано',
+    startedMessage: 'Консультація вже розпочалася, скасувати запис неможливо',
+  },
+};
+
+// Стан змінився між перевіркою і транзакцією; транзакція відкочується
+const changedConcurrently = () =>
+  new AppError(409, 'INVALID_STATUS_TRANSITION', 'Запис уже скасовано або змінено');
+
+// Зміна статусу запису з перевіркою належності (у шарі сервісів, ТЗ розділ 12)
+// і пов'язаною зміною слота в одній транзакції (NFR-05)
+async function changeBookingStatus(user, bookingId, action) {
+  const transition = TRANSITIONS[action];
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -67,37 +138,51 @@ export async function cancelBooking(user, bookingId) {
   }
 
   const isOwner =
-    (user.role === 'STUDENT' && booking.studentId === user.id) ||
-    (user.role === 'TEACHER' && booking.slot.teacherId === user.id);
+    transition.roles.includes(user.role) &&
+    ((user.role === 'STUDENT' && booking.studentId === user.id) ||
+      (user.role === 'TEACHER' && booking.slot.teacherId === user.id));
   if (!isOwner) {
-    throw new AppError(403, 'FORBIDDEN', 'Недостатньо прав для скасування цього запису');
+    throw new AppError(403, 'FORBIDDEN', 'Недостатньо прав для зміни цього запису');
   }
-  if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) {
-    throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Запис уже скасовано');
+  if (!transition.from.includes(booking.status)) {
+    throw new AppError(409, 'INVALID_STATUS_TRANSITION', transition.invalidMessage);
   }
   if (booking.slot.startAt.getTime() <= Date.now()) {
-    throw new AppError(
-      409,
-      'BOOKING_STARTED',
-      'Консультація вже розпочалася, скасувати запис неможливо',
-    );
+    throw new AppError(409, 'BOOKING_STARTED', transition.startedMessage);
   }
 
   return prisma.$transaction(async (tx) => {
-    // Порядок блокувань (спочатку слот, потім запис) такий самий, як під час видалення слота,
-    // щоб одночасні операції не блокували одна одну взаємно
-    const slotUpdate = await tx.slot.updateMany({
-      where: { id: booking.slotId, status: 'BOOKED', startAt: { gt: new Date() } },
-      data: { status: 'FREE' },
-    });
-    const bookingUpdate = await tx.booking.updateMany({
-      where: { id: bookingId, status: { in: ACTIVE_BOOKING_STATUSES } },
-      data: { status: 'CANCELLED' },
-    });
-    // Стан змінився між перевіркою і транзакцією (наприклад, запис уже скасовано)
-    if (slotUpdate.count === 0 || bookingUpdate.count === 0) {
-      throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Запис уже скасовано або змінено');
+    const now = new Date();
+    // Порядок блокувань (спочатку слот, потім запис) такий самий, як під час бронювання
+    // та видалення слота, щоб одночасні операції не блокували одна одну взаємно
+    if (transition.releaseSlot) {
+      const slotUpdate = await tx.slot.updateMany({
+        where: { id: booking.slotId, status: 'BOOKED', startAt: { gt: now } },
+        data: { status: 'FREE' },
+      });
+      if (slotUpdate.count === 0) throw changedConcurrently();
     }
+    // Умовне оновлення: якщо статус запису змінився після перевірки, зміна не виконується
+    const bookingUpdate = await tx.booking.updateMany({
+      where: {
+        id: bookingId,
+        status: { in: transition.from },
+        slot: { startAt: { gt: now } },
+      },
+      data: { status: transition.to },
+    });
+    if (bookingUpdate.count === 0) throw changedConcurrently();
+
     return tx.booking.findUnique({ where: { id: bookingId }, select: bookingSelect });
   });
 }
+
+// FR-21: підтвердження запису викладачем (власником слота)
+export const confirmBooking = (user, bookingId) => changeBookingStatus(user, bookingId, 'confirm');
+
+// FR-21: відхилення запису викладачем (власником слота); слот повертається у FREE
+export const rejectBooking = (user, bookingId) => changeBookingStatus(user, bookingId, 'reject');
+
+// FR-20, BR-05: скасування активного запису студентом (власником запису)
+// або викладачем (власником слота) до початку консультації; слот повертається у FREE
+export const cancelBooking = (user, bookingId) => changeBookingStatus(user, bookingId, 'cancel');

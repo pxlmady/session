@@ -8,6 +8,7 @@ import { bookingsRouter } from './routes/bookings.js';
 import { healthRouter } from './routes/health.js';
 import { slotsRouter } from './routes/slots.js';
 import { teachersRouter } from './routes/teachers.js';
+import { usersRouter } from './routes/users.js';
 
 // options.authRateLimit дозволяє тестам задати власний ліміт спроб автентифікації
 export function createApp(options = {}) {
@@ -20,6 +21,7 @@ export function createApp(options = {}) {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', createAuthRouter({ rateLimit: options.authRateLimit }));
+  app.use('/api/users', usersRouter);
   app.use('/api/teachers', teachersRouter);
   app.use('/api/slots', slotsRouter);
   app.use('/api/bookings', bookingsRouter);
