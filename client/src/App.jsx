@@ -1,74 +1,58 @@
-import { useEffect, useState } from 'react';
-import { Alert, Box, Button, Container, Stack, Typography } from '@mui/material';
+import { Navigate, Route, Routes } from 'react-router';
+import { Box, CircularProgress } from '@mui/material';
+import { AppLayout } from './components/AppLayout.jsx';
+import { GuestRoute, ProtectedRoute } from './components/ProtectedRoute.jsx';
+import { useAuth } from './context/auth-context.js';
+import AdminPage from './pages/AdminPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import MyBookingsPage from './pages/MyBookingsPage.jsx';
+import NotFoundPage from './pages/NotFoundPage.jsx';
+import ProfilePage from './pages/ProfilePage.jsx';
+import RegisterPage from './pages/RegisterPage.jsx';
+import SlotsPage from './pages/SlotsPage.jsx';
+import TeacherSlotsPage from './pages/TeacherSlotsPage.jsx';
+import TeachersPage from './pages/TeachersPage.jsx';
+import { roleHome } from './utils/roles.js';
 
-// Мінімальна перевірка працездатності: клієнт звертається до сервера й бази даних
-async function fetchStatus(path) {
-  try {
-    const res = await fetch(path);
-    const body = await res.json();
-    return {
-      ok: res.ok,
-      text: res.ok ? 'працює' : (body.error?.message ?? `помилка ${res.status}`),
-    };
-  } catch {
-    return { ok: false, text: 'сервер недоступний' };
-  }
-}
-
+// Маршрути клієнтської частини (ТЗ, п. 13.2) і доступ за ролями (ТЗ, табл. 4.1)
 export default function App() {
-  const [server, setServer] = useState(null);
-  const [database, setDatabase] = useState(null);
+  const { user, status } = useAuth();
 
-  const check = async () => {
-    setServer(await fetchStatus('/api/health'));
-    setDatabase(await fetchStatus('/api/health/db'));
-  };
-
-  const recheck = () => {
-    setServer(null);
-    setDatabase(null);
-    check();
-  };
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const serverStatus = await fetchStatus('/api/health');
-      const databaseStatus = await fetchStatus('/api/health/db');
-      if (active) {
-        setServer(serverStatus);
-        setDatabase(databaseStatus);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const row = (label, state) => (
-    <Alert severity={state === null ? 'info' : state.ok ? 'success' : 'error'}>
-      {label}: {state === null ? 'перевірка…' : state.text}
-    </Alert>
-  );
+  // Перевірка збереженого токена під час запуску застосунку
+  if (status === 'checking') {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }}>
+        <CircularProgress aria-label="Завантаження" />
+      </Box>
+    );
+  }
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ py: 6 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Session
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Стан локального середовища розробки
-        </Typography>
-        <Stack spacing={2}>
-          {row('Клієнт', { ok: true, text: 'працює' })}
-          {row('Сервер (API)', server)}
-          {row('База даних PostgreSQL', database)}
-          <Button variant="outlined" onClick={recheck}>
-            Перевірити ще раз
-          </Button>
-        </Stack>
-      </Box>
-    </Container>
+    <Routes>
+      <Route element={<GuestRoute />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+      </Route>
+
+      <Route element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route path="/teachers" element={<TeachersPage />} />
+          <Route path="/teachers/:id" element={<TeacherSlotsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route element={<ProtectedRoute roles={['STUDENT', 'TEACHER']} />}>
+            <Route path="/my-bookings" element={<MyBookingsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['TEACHER']} />}>
+            <Route path="/slots" element={<SlotsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute roles={['ADMIN']} />}>
+            <Route path="/admin" element={<AdminPage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
+      </Route>
+
+      <Route path="/" element={<Navigate to={roleHome(user)} replace />} />
+    </Routes>
   );
 }
