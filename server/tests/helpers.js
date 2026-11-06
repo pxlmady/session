@@ -1,8 +1,11 @@
 import { prisma } from '../src/lib/prisma.js';
 import { publicUserSelect, signToken } from '../src/services/auth.service.js';
+import { flushNotifications } from '../src/services/notification.service.js';
 
-// Очищення таблиць тестової БД (порядок враховує зовнішні ключі)
+// Очищення таблиць тестової БД (порядок враховує зовнішні ключі).
+// Спочатку дочікуємося фонових email-сповіщень попереднього тесту.
 export async function resetDatabase() {
+  await flushNotifications();
   await prisma.booking.deleteMany();
   await prisma.slot.deleteMany();
   await prisma.user.deleteMany();

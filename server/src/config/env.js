@@ -25,4 +25,18 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
   // Адреса клієнтської частини, з якої дозволено запити (CORS)
   clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
+  // Email-сповіщення (Nodemailer). Якщо SMTP_HOST не задано, листи не надсилаються,
+  // а виводяться в консоль сервера (режим розробки)
+  mail: {
+    smtpHost: process.env.SMTP_HOST || '',
+    smtpPort: Number(process.env.SMTP_PORT || 587),
+    smtpSecure: process.env.SMTP_SECURE === 'true',
+    smtpUser: process.env.SMTP_USER || '',
+    smtpPass: process.env.SMTP_PASS || '',
+    from: process.env.MAIL_FROM || 'Session <no-reply@session.local>',
+    // Часовий пояс, у якому дата й час консультації показуються в листах
+    timeZone: process.env.MAIL_TIMEZONE || 'Europe/Kyiv',
+  },
+  // Розклад перевірки нагадувань (node-cron): за замовчуванням кожні 15 хвилин
+  reminderCron: process.env.REMINDER_CRON || '*/15 * * * *',
 };

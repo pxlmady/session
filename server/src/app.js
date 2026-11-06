@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { adminRouter } from './routes/admin.js';
 import { createAuthRouter } from './routes/auth.js';
 import { bookingsRouter } from './routes/bookings.js';
 import { healthRouter } from './routes/health.js';
@@ -25,6 +26,7 @@ export function createApp(options = {}) {
   app.use('/api/teachers', teachersRouter);
   app.use('/api/slots', slotsRouter);
   app.use('/api/bookings', bookingsRouter);
+  app.use('/api/admin', adminRouter);
 
   app.use(notFound);
   app.use(errorHandler);

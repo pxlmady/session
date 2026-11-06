@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   Card,
   CardContent,
   Grid,
@@ -25,17 +24,6 @@ import { useNotify } from '../context/notification-context.js';
 import { useRequest } from '../hooks/useRequest.js';
 import { BOOKING_STATUS, ROLE_LABELS } from '../utils/labels.js';
 
-// Ендпоінти /api/admin/* реалізуються на етапі 7 ТЗ; доки їх немає, сервер відповідає 404
-const notImplemented = (error) => error?.status === 404 && error.code === 'NOT_FOUND';
-
-function NotImplementedNotice() {
-  return (
-    <Alert severity="info">
-      Функцію буде доступно після реалізації API адміністрування на сервері (етап 7 ТЗ).
-    </Alert>
-  );
-}
-
 function StatCard({ label, value }) {
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
@@ -53,7 +41,6 @@ function StatCard({ label, value }) {
 
 function Stats() {
   const { data, loading, error, reload } = useRequest(() => adminApi.stats());
-  if (notImplemented(error)) return <NotImplementedNotice />;
   const state = <PageState loading={loading && !data} error={error} onRetry={reload} />;
   if (!data) return state;
 
@@ -111,7 +98,6 @@ function Users() {
   const [saving, setSaving] = useState(false);
   const [changeError, setChangeError] = useState('');
 
-  if (notImplemented(error)) return <NotImplementedNotice />;
   const users = data ?? [];
 
   const confirmChange = async () => {

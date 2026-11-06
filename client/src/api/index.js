@@ -33,13 +33,12 @@ export const bookingsApi = {
   cancel: (id) => request('PATCH', `/bookings/${id}/cancel`),
 };
 
-// Адміністрування (FR-25, FR-26). Серверні ендпоінти реалізуються на етапі 7 ТЗ;
-// клієнт очікує такі відповіді:
+// Адміністрування (FR-25, FR-26), лише для ролі ADMIN. Формат відповідей:
 //   GET /admin/stats → { usersByRole: { STUDENT, TEACHER, ADMIN }, slotsTotal,
 //                        bookingsByStatus: { PENDING, CONFIRMED, CANCELLED },
 //                        bookingsByTeacher: [{ teacherId, fullName, count }] }
 //   GET /admin/users → [{ id, fullName, email, role, department, studentGroup }]
-//   PATCH /admin/users/:id/role { role } → { user }
+//   PATCH /admin/users/:id/role { role } → { user }; власну роль змінити не можна (409)
 export const adminApi = {
   stats: () => request('GET', '/admin/stats'),
   users: () => request('GET', '/admin/users'),

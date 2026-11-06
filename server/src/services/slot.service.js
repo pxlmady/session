@@ -1,6 +1,7 @@
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { bookingSelect, bookingStudentSelect, slotSelect } from '../lib/selects.js';
+import { NOTIFICATION_EVENTS, notifyBookingEvent } from './notification.service.js';
 
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'];
 
@@ -106,14 +107,16 @@ export async function updateSlot(teacherId, slotId, changes) {
 }
 
 // FR-11: слот без записів видаляється (повертає null → 204);
-// слот із записами переводиться в CANCELLED, активний запис скасовується (повертає слот → 200).
+// слот із записами переводиться в CANCELLED, активний запис скасовується (повертає слот → 200),
+// а студенту зі скасованим записом надсилається лист.
 export async function deleteSlot(teacherId, slotId) {
   const slot = await getOwnSlot(teacherId, slotId);
   if (slot.status === 'CANCELLED') {
     throw new AppError(409, 'INVALID_STATUS_TRANSITION', 'Слот уже скасовано');
   }
 
-  return prisma.$transaction(async (tx) => {
+  let cancelledBookingIds = [];
+  const result = await prisma.$transaction(async (tx) => {
     // Спочатку слот переводиться в CANCELLED (і блокується): одночасне бронювання
     // вже не зможе змінити його статус на BOOKED (умовне оновлення в booking.service)
     const { count } = await tx.slot.updateMany({
@@ -141,10 +144,20 @@ export async function deleteSlot(teacherId, slotId) {
         'Консультація вже розпочалася, скасувати запис на неї неможливо',
       );
     }
+    const activeBookings = await tx.booking.findMany({
+      where: { slotId, status: { in: ACTIVE_BOOKING_STATUSES } },
+      select: { id: true },
+    });
     await tx.booking.updateMany({
       where: { slotId, status: { in: ACTIVE_BOOKING_STATUSES } },
       data: { status: 'CANCELLED' },
     });
+    cancelledBookingIds = activeBookings.map((booking) => booking.id);
     return tx.slot.findUnique({ where: { id: slotId }, select: slotSelect });
   });
+
+  for (const bookingId of cancelledBookingIds) {
+    notifyBookingEvent(NOTIFICATION_EVENTS.SLOT_CANCELLED, bookingId);
+  }
+  return result;
 }

@@ -1,6 +1,7 @@
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { bookingSelect, bookingStudentSelect, teacherSelect } from '../lib/selects.js';
+import { NOTIFICATION_EVENTS, notifyBookingEvent } from './notification.service.js';
 
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'];
 
@@ -27,9 +28,11 @@ async function bookingFailure(tx, slotId) {
 //    тому з одночасних запитів його змінює лише перший, решта отримують count = 0 → 409.
 // 2) Створення запису PENDING. Частковий унікальний індекс Booking_active_slot_unique
 //    додатково гарантує на рівні БД не більше одного активного запису на слот.
+// Після успішного бронювання викладачу й студенту надсилаються листи (у фоні).
 export async function createBooking(studentId, { slotId, topic }) {
+  let booking;
   try {
-    return await prisma.$transaction(async (tx) => {
+    booking = await prisma.$transaction(async (tx) => {
       const { count } = await tx.slot.updateMany({
         where: { id: slotId, status: 'FREE', startAt: { gt: new Date() } },
         data: { status: 'BOOKED' },
@@ -47,6 +50,8 @@ export async function createBooking(studentId, { slotId, topic }) {
     if (err.code === 'P2002') throw slotAlreadyBooked();
     throw err;
   }
+  notifyBookingEvent(NOTIFICATION_EVENTS.BOOKING_CREATED, booking.id);
+  return booking;
 }
 
 // Дані запису для списку «Мої записи» (FR-18, FR-19): слот із викладачем і студент.
@@ -87,11 +92,12 @@ export function listMyBookings(user, period) {
 // confirm – PENDING → CONFIRMED (викладач, FR-21);
 // reject  – PENDING → CANCELLED зі звільненням слота (викладач, FR-21);
 // cancel  – PENDING / CONFIRMED → CANCELLED зі звільненням слота (студент або викладач, FR-20).
-// Усі дії можливі лише до початку консультації (BR-05).
+// Усі дії можливі лише до початку консультації (BR-05). event – тип email-сповіщення.
 const TRANSITIONS = {
   confirm: {
     from: ['PENDING'],
     to: 'CONFIRMED',
+    event: NOTIFICATION_EVENTS.BOOKING_CONFIRMED,
     releaseSlot: false,
     roles: ['TEACHER'],
     invalidMessage: 'Підтвердити можна лише запис, що очікує підтвердження',
@@ -100,6 +106,7 @@ const TRANSITIONS = {
   reject: {
     from: ['PENDING'],
     to: 'CANCELLED',
+    event: NOTIFICATION_EVENTS.BOOKING_REJECTED,
     releaseSlot: true,
     roles: ['TEACHER'],
     invalidMessage: 'Відхилити можна лише запис, що очікує підтвердження',
@@ -108,6 +115,7 @@ const TRANSITIONS = {
   cancel: {
     from: ACTIVE_BOOKING_STATUSES,
     to: 'CANCELLED',
+    event: NOTIFICATION_EVENTS.BOOKING_CANCELLED,
     releaseSlot: true,
     roles: ['STUDENT', 'TEACHER'],
     invalidMessage: 'Запис уже скасовано',
@@ -151,7 +159,7 @@ async function changeBookingStatus(user, bookingId, action) {
     throw new AppError(409, 'BOOKING_STARTED', transition.startedMessage);
   }
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const now = new Date();
     // Порядок блокувань (спочатку слот, потім запис) такий самий, як під час бронювання
     // та видалення слота, щоб одночасні операції не блокували одна одну взаємно
@@ -175,6 +183,10 @@ async function changeBookingStatus(user, bookingId, action) {
 
     return tx.booking.findUnique({ where: { id: bookingId }, select: bookingSelect });
   });
+
+  // Лист іншому учаснику консультації надсилається у фоні після фіксації змін
+  notifyBookingEvent(transition.event, bookingId, { cancelledBy: user.role });
+  return updated;
 }
 
 // FR-21: підтвердження запису викладачем (власником слота)
