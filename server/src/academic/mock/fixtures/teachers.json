@@ -1,0 +1,12 @@
+[
+  {
+    "externalId": "DEMO-T-01",
+    "fullName": "Викладач Тестовий Перший",
+    "subjects": ["DEMO-SUBJ-WEB", "DEMO-SUBJ-DB", "DEMO-SUBJ-SE"]
+  },
+  {
+    "externalId": "DEMO-T-02",
+    "fullName": "Викладач Тестовий Другий",
+    "subjects": ["DEMO-SUBJ-ALG", "DEMO-SUBJ-MATH", "DEMO-SUBJ-SE"]
+  }
+]

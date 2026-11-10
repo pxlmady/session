@@ -350,8 +350,14 @@ describe('FR-13. Список викладачів', () => {
         id: otherTeacher.user.id,
         fullName: 'Коваленко Андрій Петрович',
         department: 'Кафедра ІПЗ',
+        subjects: [],
       },
-      { id: teacher.user.id, fullName: 'Петренко Ольга Іванівна', department: 'Кафедра ТЦР' },
+      {
+        id: teacher.user.id,
+        fullName: 'Петренко Ольга Іванівна',
+        department: 'Кафедра ТЦР',
+        subjects: [],
+      },
     ]);
   });
 

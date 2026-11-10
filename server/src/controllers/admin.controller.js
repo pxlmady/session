@@ -1,8 +1,8 @@
 import * as adminService from '../services/admin.service.js';
 
 // FR-25
-export async function stats(_req, res) {
-  res.json(await adminService.getStats());
+export async function stats(req, res) {
+  res.json(await adminService.getStats(req.app.locals.academic));
 }
 
 // FR-26

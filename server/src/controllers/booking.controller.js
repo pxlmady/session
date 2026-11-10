@@ -5,9 +5,9 @@ export async function listMy(req, res) {
   res.json(await bookingService.listMyBookings(req.user, req.validated.query.period));
 }
 
-// FR-15, FR-16
+// FR-15, FR-16, FR-33, FR-35
 export async function create(req, res) {
-  const booking = await bookingService.createBooking(req.user.id, req.body);
+  const booking = await bookingService.createBooking(req.user, req.body, req.app.locals.academic);
   res.status(201).json(booking);
 }
 

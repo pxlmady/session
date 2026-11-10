@@ -2,6 +2,7 @@ import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
 import { bookingSelect, bookingStudentSelect, teacherSelect } from '../lib/selects.js';
 import { NOTIFICATION_EVENTS, notifyBookingEvent } from './notification.service.js';
+import { assertSubjectExists } from './subject.service.js';
 
 const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'];
 
@@ -29,7 +30,39 @@ async function bookingFailure(tx, slotId) {
 // 2) Створення запису PENDING. Частковий унікальний індекс Booking_active_slot_unique
 //    додатково гарантує на рівні БД не більше одного активного запису на слот.
 // Після успішного бронювання викладачу й студенту надсилаються листи (у фоні).
-export async function createBooking(studentId, { slotId, topic }) {
+//
+// Академічна інтеграція (FR-33, FR-35, FR-36): subjectId зберігає дисципліну запису
+// (неіснуюча – 404 SUBJECT_NOT_FOUND). До транзакції слот перевіряється на накладку
+// з розкладом студента: за накладки без acknowledgeConflict = true – 409 SCHEDULE_CONFLICT
+// без зміни слота. Якщо перевірка недоступна (немає зіставлення або збій постачальника),
+// бронювання виконується без неї. Відповідь містить результат перевірки scheduleCheck.
+export async function createBooking(
+  student,
+  { slotId, topic, subjectId, acknowledgeConflict },
+  academic,
+) {
+  if (subjectId) await assertSubjectExists(subjectId);
+
+  // Накладку перевіряємо лише для слота, який ще можна забронювати; інакше транзакція
+  // поверне звичайну причину відмови (слот не знайдено, зайнято, скасовано, минув)
+  let scheduleCheck = 'UNAVAILABLE';
+  const slot = await prisma.slot.findUnique({
+    where: { id: slotId },
+    select: { status: true, startAt: true, endAt: true },
+  });
+  if (slot && slot.status === 'FREE' && slot.startAt.getTime() > Date.now()) {
+    const check = await academic.checkSlot(student, slot);
+    scheduleCheck = check.scheduleCheck;
+    if (check.scheduleCheck === 'CONFLICT' && !acknowledgeConflict) {
+      throw new AppError(
+        409,
+        'SCHEDULE_CONFLICT',
+        'Слот перетинається із заняттям за розкладом. Підтвердьте бронювання',
+        check.conflicts,
+      );
+    }
+  }
+
   let booking;
   try {
     booking = await prisma.$transaction(async (tx) => {
@@ -41,7 +74,7 @@ export async function createBooking(studentId, { slotId, topic }) {
         throw await bookingFailure(tx, slotId);
       }
       return tx.booking.create({
-        data: { slotId, studentId, topic },
+        data: { slotId, studentId: student.id, subjectId: subjectId ?? null, topic },
         select: bookingSelect,
       });
     });
@@ -51,7 +84,7 @@ export async function createBooking(studentId, { slotId, topic }) {
     throw err;
   }
   notifyBookingEvent(NOTIFICATION_EVENTS.BOOKING_CREATED, booking.id);
-  return booking;
+  return { ...booking, scheduleCheck };
 }
 
 // Дані запису для списку «Мої записи» (FR-18, FR-19): слот із викладачем і студент.
@@ -69,6 +102,8 @@ const myBookingSelect = {
     },
   },
   student: { select: bookingStudentSelect },
+  // FR-39: назва дисципліни; академічні дані студента викладачу не передаються
+  subject: { select: { id: true, name: true } },
 };
 
 // FR-18, FR-19: власні записи студента або записи на слоти викладача.

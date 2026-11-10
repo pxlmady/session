@@ -1,10 +1,15 @@
 // Початкове заповнення бази даних Session (ТЗ розділ 9.5).
 // Створює адміністратора з ADMIN_EMAIL і ADMIN_PASSWORD. Якщо задано SEED_DEMO_PASSWORD,
 // додатково створює тестових викладачів, студентів і майбутні вільні слоти (вигадані дані).
+// Академічна інтеграція (ТЗ п. 4.1.5): довідник дисциплін заповнюється з постачальника
+// ACADEMIC_PROVIDER (у прототипі – mock) завжди; для тестових облікових записів додатково
+// створюються зіставлення AcademicDataMapping, зв'язки викладач – дисципліна і слот,
+// що перетинається із заняттям демонстраційного студента (для показу перевірки накладок).
 // Повторний запуск безпечний: наявні записи не дублюються.
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
+import { createAcademicProvider } from '../src/academic/index.js';
 
 const BCRYPT_ROUNDS = 10;
 const prisma = new PrismaClient();
@@ -116,10 +121,106 @@ async function seedDemo(password) {
   console.log(`Тестові облікові записи (пароль із SEED_DEMO_PASSWORD): ${accounts}`);
 }
 
+// Зіставлення тестових облікових записів із профілями демонстраційного постачальника.
+// Зовнішній ідентифікатор задає лише цей сценарій (FR-27, таблиця 4.9).
+const DEMO_ACADEMIC_MAPPING = {
+  'student1@session.local': 'DEMO-S-1001',
+  'student2@session.local': 'DEMO-S-1002',
+  'teacher1@session.local': 'DEMO-T-01',
+  'teacher2@session.local': 'DEMO-T-02',
+};
+
+// Довідник дисциплін Session з даних постачальника
+async function seedSubjects(provider) {
+  const subjects = await provider.listSubjects();
+  for (const { externalId, name } of subjects) {
+    await prisma.subject.upsert({
+      where: { externalId },
+      update: { name },
+      create: { externalId, name },
+    });
+  }
+  console.log(`Дисципліни (${provider.name}): ${subjects.length}`);
+}
+
+async function seedDemoAcademic(provider) {
+  const users = await prisma.user.findMany({
+    where: { email: { in: Object.keys(DEMO_ACADEMIC_MAPPING) } },
+    select: { id: true, email: true, role: true },
+  });
+
+  for (const user of users) {
+    const externalId = DEMO_ACADEMIC_MAPPING[user.email];
+    await prisma.academicDataMapping.upsert({
+      where: { userId: user.id },
+      update: { provider: provider.name, externalId },
+      create: { userId: user.id, provider: provider.name, externalId },
+    });
+
+    if (user.role === 'TEACHER') {
+      const subjectExternalIds = await provider.getTeacherSubjects(externalId);
+      const subjects = await prisma.subject.findMany({
+        where: { externalId: { in: subjectExternalIds } },
+        select: { id: true },
+      });
+      await prisma.teacherSubject.createMany({
+        data: subjects.map((subject) => ({ teacherId: user.id, subjectId: subject.id })),
+        skipDuplicates: true,
+      });
+    }
+  }
+  console.log(`Зіставлено з демонстраційними профілями: ${users.map((u) => u.email).join(', ')}`);
+
+  await seedConflictSlot(provider, users);
+}
+
+// Слот першого викладача, що перетинається з найближчим заняттям першого студента.
+// Створюється, лише якщо такого вільного слота ще немає.
+async function seedConflictSlot(provider, users) {
+  const teacher = users.find((user) => user.email === 'teacher1@session.local');
+  const student = users.find((user) => user.email === 'student1@session.local');
+  if (!teacher || !student) return;
+
+  const now = new Date();
+  const from = new Date(now.getTime() + 60 * 60 * 1000);
+  const to = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const classes = (
+    await provider.getStudentSchedule(DEMO_ACADEMIC_MAPPING[student.email], { from, to })
+  )
+    .map((entry) => ({ ...entry, startAt: new Date(entry.startAt), endAt: new Date(entry.endAt) }))
+    .filter((entry) => entry.startAt > from);
+  if (classes.length === 0) return;
+
+  const freeSlots = await prisma.slot.findMany({
+    where: { teacherId: teacher.id, status: 'FREE', startAt: { gt: now } },
+    select: { startAt: true, endAt: true },
+  });
+  const hasConflict = freeSlots.some((slot) =>
+    classes.some((entry) => slot.startAt < entry.endAt && entry.startAt < slot.endAt),
+  );
+  if (hasConflict) return;
+
+  const startAt = new Date(classes[0].startAt.getTime() + 20 * 60 * 1000);
+  await prisma.slot.create({
+    data: {
+      teacherId: teacher.id,
+      startAt,
+      endAt: new Date(startAt.getTime() + 30 * 60 * 1000),
+      location: 'Аудиторія 101',
+    },
+  });
+  console.log(
+    `Створено слот із накладкою на заняття демонстраційного студента: ${startAt.toISOString()}`,
+  );
+}
+
 try {
   await seedAdmin();
+  const academicProvider = createAcademicProvider(process.env.ACADEMIC_PROVIDER || 'mock');
+  await seedSubjects(academicProvider);
   if (process.env.SEED_DEMO_PASSWORD) {
     await seedDemo(process.env.SEED_DEMO_PASSWORD);
+    await seedDemoAcademic(academicProvider);
   } else {
     console.log('SEED_DEMO_PASSWORD не задано: тестові дані не створюються.');
   }

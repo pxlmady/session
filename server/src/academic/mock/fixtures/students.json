@@ -1,0 +1,162 @@
+[
+  {
+    "externalId": "DEMO-S-1001",
+    "profile": {
+      "group": "Група 1",
+      "institute": "Демонстраційний навчально-науковий інститут",
+      "specialty": "Інженерія програмного забезпечення",
+      "course": 3,
+      "studyForm": "Денна",
+      "averageScore": 78.4
+    },
+    "records": [
+      {
+        "id": "R1001-01",
+        "subjectExternalId": "DEMO-SUBJ-MATH",
+        "semester": 3,
+        "controlType": "Екзамен",
+        "score": 74,
+        "nationalGrade": "Добре",
+        "date": "2026-01-16"
+      },
+      {
+        "id": "R1001-02",
+        "subjectExternalId": "DEMO-SUBJ-ALG",
+        "semester": 3,
+        "controlType": "Екзамен",
+        "score": 88,
+        "nationalGrade": "Добре",
+        "date": "2026-01-20"
+      },
+      {
+        "id": "R1001-03",
+        "subjectExternalId": "DEMO-SUBJ-WEB",
+        "semester": 3,
+        "controlType": "Залік",
+        "score": 92,
+        "nationalGrade": "Зараховано",
+        "date": "2025-12-26"
+      },
+      {
+        "id": "R1001-04",
+        "subjectExternalId": "DEMO-SUBJ-DB",
+        "semester": 4,
+        "controlType": "Екзамен",
+        "score": 52,
+        "nationalGrade": "Незадовільно",
+        "date": "2026-06-12"
+      },
+      {
+        "id": "R1001-05",
+        "subjectExternalId": "DEMO-SUBJ-SE",
+        "semester": 4,
+        "controlType": "Екзамен",
+        "score": 81,
+        "nationalGrade": "Добре",
+        "date": "2026-06-16"
+      },
+      {
+        "id": "R1001-06",
+        "subjectExternalId": "DEMO-SUBJ-ALG",
+        "semester": 4,
+        "controlType": "Залік",
+        "score": 65,
+        "nationalGrade": "Зараховано",
+        "date": "2026-06-05"
+      }
+    ],
+    "debts": [
+      {
+        "id": "D1001-01",
+        "subjectExternalId": "DEMO-SUBJ-DB",
+        "debtType": "Незадовільна оцінка на екзамені",
+        "description": "Повторне складання екзамену за 4 семестр",
+        "deadline": "2026-12-15",
+        "status": "open"
+      },
+      {
+        "id": "D1001-02",
+        "subjectExternalId": "DEMO-SUBJ-WEB",
+        "debtType": "Незахищена лабораторна робота",
+        "description": "Лабораторна робота № 3: REST API",
+        "deadline": "2026-11-28",
+        "status": "open"
+      },
+      {
+        "id": "D1001-03",
+        "subjectExternalId": "DEMO-SUBJ-MATH",
+        "debtType": "Неподана розрахункова робота",
+        "description": "Розрахункова робота за 3 семестр",
+        "deadline": null,
+        "status": "closed"
+      }
+    ]
+  },
+  {
+    "externalId": "DEMO-S-1002",
+    "profile": {
+      "group": "Група 2",
+      "institute": "Демонстраційний навчально-науковий інститут",
+      "specialty": "Комп'ютерні науки",
+      "course": 2,
+      "studyForm": "Денна",
+      "averageScore": null
+    },
+    "records": [
+      {
+        "id": "R1002-01",
+        "subjectExternalId": "DEMO-SUBJ-MATH",
+        "semester": 1,
+        "controlType": "Екзамен",
+        "score": 90,
+        "nationalGrade": "Відмінно",
+        "date": "2026-01-19"
+      },
+      {
+        "id": "R1002-02",
+        "subjectExternalId": "DEMO-SUBJ-WEB",
+        "semester": 1,
+        "controlType": "Залік",
+        "score": 70,
+        "nationalGrade": "Зараховано",
+        "date": "2025-12-24"
+      },
+      {
+        "id": "R1002-03",
+        "subjectExternalId": "DEMO-SUBJ-ALG",
+        "semester": 2,
+        "controlType": "Екзамен",
+        "score": 63,
+        "nationalGrade": "Задовільно",
+        "date": "2026-06-10"
+      },
+      {
+        "id": "R1002-04",
+        "subjectExternalId": "DEMO-SUBJ-SE",
+        "semester": 2,
+        "controlType": "Залік",
+        "score": 45,
+        "nationalGrade": "Не зараховано",
+        "date": "2026-06-03"
+      }
+    ],
+    "debts": [
+      {
+        "id": "D1002-01",
+        "subjectExternalId": "DEMO-SUBJ-SE",
+        "debtType": "Незарахований залік",
+        "description": "Повторне складання заліку за 2 семестр",
+        "deadline": "2026-12-05",
+        "status": "open"
+      },
+      {
+        "id": "D1002-02",
+        "subjectExternalId": "DEMO-SUBJ-ALG",
+        "debtType": "Незахищена лабораторна робота",
+        "description": "Лабораторна робота № 5: графи",
+        "deadline": null,
+        "status": "closed"
+      }
+    ]
+  }
+]

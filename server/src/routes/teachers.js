@@ -5,10 +5,11 @@ import { validate } from '../middleware/validate.js';
 import { idParamsSchema } from '../validation/common.schemas.js';
 import { teacherSearchSchema } from '../validation/slot.schemas.js';
 
-// Перегляд викладачів і їхніх вільних слотів – автентифіковані користувачі (ТЗ, таблиця 23)
+// Перегляд викладачів, їхніх дисциплін і вільних слотів – автентифіковані користувачі (ТЗ, таблиця 23)
 export const teachersRouter = Router();
 
 teachersRouter.use(auth);
 
 teachersRouter.get('/', validate(teacherSearchSchema, 'query'), teacherController.list);
+teachersRouter.get('/:id', validate(idParamsSchema, 'params'), teacherController.getById);
 teachersRouter.get('/:id/slots', validate(idParamsSchema, 'params'), teacherController.freeSlots);

@@ -31,18 +31,21 @@ enum BookingStatus {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
+  id              Int                  @id @default(autoincrement())
   // Зберігається в нижньому регістрі (BR-01)
-  email        String    @unique
-  passwordHash String
-  fullName     String
-  role         Role
-  department   String?
-  studentGroup String?
-  slots        Slot[]    @relation("TeacherSlots")
-  bookings     Booking[] @relation("StudentBookings")
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  email           String               @unique
+  passwordHash    String
+  fullName        String
+  role            Role
+  department      String?
+  studentGroup    String?
+  slots           Slot[]               @relation("TeacherSlots")
+  bookings        Booking[]            @relation("StudentBookings")
+  // Академічна інтеграція (ТЗ п. 4.1.5): дисципліни викладача і зіставлення з джерелом даних
+  subjects        TeacherSubject[]
+  academicMapping AcademicDataMapping?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
 }
 
 model Slot {
@@ -69,6 +72,9 @@ model Booking {
   // Restrict: студента, який має записи, видалити не можна (BR-06)
   student        User          @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Restrict)
   studentId      Int
+  // Дисципліна, з якої запитано консультацію (FR-33, необов'язкова)
+  subject        Subject?      @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  subjectId      Int?
   topic          String
   status         BookingStatus @default(PENDING)
   reminderSentAt DateTime?
@@ -77,4 +83,44 @@ model Booking {
 
   @@index([studentId])
   @@index([slotId])
+}
+
+// ---------------------------------------------------------------------------
+// Академічна інтеграція (ТЗ п. 4.1.5, таблиці 4.5, 4.7). Оцінки, заборгованості, профіль
+// і розклад студента в БД не зберігаються: їх повертає постачальник академічних даних.
+// Таблиці нижче заповнює лише сценарій початкового заповнення (prisma/seed.js).
+
+// Довідник дисциплін Session; externalId – код дисципліни в джерелі академічних даних
+model Subject {
+  id         Int              @id @default(autoincrement())
+  externalId String           @unique
+  name       String
+  teachers   TeacherSubject[]
+  bookings   Booking[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+// Зв'язок викладач – дисципліна (FR-32)
+model TeacherSubject {
+  teacher   User    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherId Int
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId Int
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+// Зіставлення облікового запису Session з профілем у джерелі академічних даних (FR-27).
+// Користувач не може вказати чи змінити externalId: запис створює лише seed.
+model AcademicDataMapping {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int      @unique
+  provider   String
+  externalId String
+  createdAt  DateTime @default(now())
+
+  @@unique([provider, externalId])
 }

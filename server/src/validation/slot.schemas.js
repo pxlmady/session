@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { subjectIdQuery } from './academic.schemas.js';
 import { optionalText } from './common.schemas.js';
 
 // Дата й час у форматі ISO 8601 з обов'язковою часовою зоною (Z або зміщення, наприклад +02:00).
@@ -51,8 +52,9 @@ export const updateSlotSchema = z
   })
   .superRefine(checkTimes);
 
-// FR-13: пошук викладачів за ПІБ
+// FR-13: пошук викладачів за ПІБ; FR-32: фільтр за дисципліною
 export const teacherSearchSchema = z.object({
+  subjectId: subjectIdQuery.optional(),
   search: z
     .string({ error: 'Очікується рядок' })
     .trim()

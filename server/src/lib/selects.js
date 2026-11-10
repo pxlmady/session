@@ -15,6 +15,7 @@ export const bookingSelect = {
   id: true,
   slotId: true,
   studentId: true,
+  subjectId: true,
   topic: true,
   status: true,
   createdAt: true,

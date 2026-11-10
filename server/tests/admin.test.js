@@ -96,6 +96,8 @@ describe('GET /api/admin/stats', () => {
       slotsTotal: 0,
       bookingsByStatus: { PENDING: 0, CONFIRMED: 0, CANCELLED: 0 },
       bookingsByTeacher: [],
+      // Етап 8 (FR-40): стан академічної інтеграції
+      academic: expect.objectContaining({ provider: 'mock', isDemo: true, available: true }),
     });
   });
 
@@ -120,6 +122,8 @@ describe('GET /api/admin/stats', () => {
         { teacherId: teacher.user.id, fullName: 'Викладач Перший', count: 3 },
         { teacherId: otherTeacher.user.id, fullName: 'Викладач Другий', count: 0 },
       ],
+      // Етап 8 (FR-40): стан академічної інтеграції
+      academic: expect.objectContaining({ provider: 'mock', isDemo: true, available: true }),
     });
   });
 

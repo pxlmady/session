@@ -8,6 +8,9 @@ export async function resetDatabase() {
   await flushNotifications();
   await prisma.booking.deleteMany();
   await prisma.slot.deleteMany();
+  await prisma.teacherSubject.deleteMany();
+  await prisma.academicDataMapping.deleteMany();
+  await prisma.subject.deleteMany();
   await prisma.user.deleteMany();
 }
 

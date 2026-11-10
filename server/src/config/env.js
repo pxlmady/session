@@ -16,6 +16,16 @@ if (process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
+// Постачальник академічних даних (ТЗ п. 4.1.5): у прототипі допустимий лише mock
+const ACADEMIC_PROVIDERS = ['mock'];
+const academicProvider = process.env.ACADEMIC_PROVIDER || 'mock';
+if (!ACADEMIC_PROVIDERS.includes(academicProvider)) {
+  console.error(
+    `Невідомий постачальник академічних даних ACADEMIC_PROVIDER=${academicProvider}. Допустимі значення: ${ACADEMIC_PROVIDERS.join(', ')}.`,
+  );
+  process.exit(1);
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   port: Number(process.env.PORT ?? 3000),
@@ -39,4 +49,6 @@ export const env = {
   },
   // Розклад перевірки нагадувань (node-cron): за замовчуванням кожні 15 хвилин
   reminderCron: process.env.REMINDER_CRON || '*/15 * * * *',
+  // Постачальник академічних даних (FR-27 – FR-37)
+  academicProvider,
 };

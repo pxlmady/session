@@ -13,6 +13,7 @@ server/              серверна частина (Express, Prisma)
   prisma/            схема БД (schema.prisma), міграції (migrations/), початкові дані (seed.js)
   scripts/           службові скрипти (перевірка підключення, міграцій та обмежень БД)
   src/               код API: routes → middleware → controllers → services → Prisma
+    academic/        академічна інтеграція: контракт постачальника, MockAcademicProvider і fixtures
   tests/             інтеграційні тести API (Jest, Supertest)
 docker-compose.yml   контейнер PostgreSQL для розробки
 .env.example         змінні для контейнера PostgreSQL
@@ -42,13 +43,16 @@ server/.env.example  змінні серверної частини (DATABASE_UR
 
 ## База даних
 
-Сутності `User`, `Slot`, `Booking` описано в `server/prisma/schema.prisma` (ТЗ, розділ 9).
+Сутності `User`, `Slot`, `Booking`, а також `Subject`, `TeacherSubject`, `AcademicDataMapping`
+академічної інтеграції описано в `server/prisma/schema.prisma` (ТЗ, розділ 9).
 Структура БД змінюється лише через міграції Prisma:
 
 - `npm --prefix server run prisma:migrate` — створити й застосувати міграцію після зміни схеми;
 - `npm --prefix server run prisma:status` — стан міграцій;
 - `npm --prefix server run db:seed` — адміністратор і (якщо задано `SEED_DEMO_PASSWORD`) тестові
   викладачі `teacher1/2@session.local`, студенти `student1/2@session.local` та вільні слоти;
+  довідник дисциплін постачальника; для тестових акаунтів – зіставлення з демонстраційними
+  профілями, дисципліни викладачів і щонайменше один слот із накладкою на заняття `student1`;
 - `npm --prefix server run db:check-migrations` — частковий індекс `Booking_active_slot_unique` є в БД
   і жодна міграція його не видаляє;
 - `npm --prefix server run db:check-constraints` — перевірка унікальності email, одного активного
@@ -144,6 +148,44 @@ server/.env.example  змінні серверної частини (DATABASE_UR
   `Booking.reminderSentAt`, тому нагадування не повторюється.
 - Без `SMTP_HOST` листи не надсилаються, а виводяться в консоль сервера (`[email] Кому: ...`).
   Налаштування SMTP – у `server/.env.example`.
+
+## Академічна інтеграція (серверна частина)
+
+Модуль `server/src/academic/` (ТЗ п. 4.1.5, FR-27 – FR-37, FR-39, FR-40). Session не підключено до
+систем університету: дані надає демонстраційний постачальник `MockAcademicProvider` (JSON-fixtures у
+`src/academic/mock/fixtures/`, вигадані дані, без мережевих запитів). Постачальник обирається
+змінною `ACADEMIC_PROVIDER` (допустимо лише `mock`; інше значення зупиняє запуск), у тестах
+підміняється через `createApp({ academicProvider })`. Оцінки, заборгованості, профіль і розклад у БД
+не зберігаються; у БД – лише довідник дисциплін, зв'язки викладач – дисципліна і зіставлення
+`AcademicDataMapping`, яке створює тільки seed.
+
+| Метод та шлях                                 | Призначення                                           | Доступ          |
+| --------------------------------------------- | ----------------------------------------------------- | --------------- |
+| `GET /api/academic/status`                    | Стан джерела даних і зіставлення користувача          | Автентифіковані |
+| `GET /api/academic/me/profile`                | Академічний профіль                                   | Студент         |
+| `GET /api/academic/me/records?semester=`      | Оцінки (семестр 1–12, необов'язковий)                 | Студент         |
+| `GET /api/academic/me/debts?status=open\|all` | Заборгованості (типово відкриті)                      | Студент         |
+| `GET /api/academic/me/schedule?from=&to=`     | Розклад за дати `YYYY-MM-DD` (Europe/Kyiv, ≤ 31 доби) | Студент         |
+| `GET /api/subjects?search=`                   | Довідник дисциплін із кількістю викладачів            | Автентифіковані |
+| `GET /api/subjects/:id`                       | Дисципліна та її викладачі                            | Автентифіковані |
+| `GET /api/teachers/:id`                       | Викладач із дисциплінами                              | Автентифіковані |
+
+- Відповіді `/api/academic/*` мають вигляд `{ data, meta: { provider, isDemo, dataAsOf } }`.
+- Незіставлений студент отримує 404 `ACADEMIC_PROFILE_NOT_LINKED`, викладач і адміністратор – 403.
+  Збій постачальника, перевищення часу очікування (3 с) або некоректні дані – 503
+  `ACADEMIC_PROVIDER_UNAVAILABLE`.
+- `GET /api/teachers?subjectId=` – фільтр викладачів за дисципліною; список викладачів містить
+  `subjects`.
+- `GET /api/teachers/:id/slots` для студента додає до кожного слота `scheduleCheck`
+  (`OK`, `CONFLICT`, `UNAVAILABLE`) і `conflicts` (дисципліна, вид заняття, час); для інших ролей ці
+  поля відсутні. Суміжний із заняттям слот має `OK`.
+- `POST /api/bookings` приймає `subjectId` (неіснуюча – 404 `SUBJECT_NOT_FOUND`) і
+  `acknowledgeConflict`. Слот із накладкою без `acknowledgeConflict: true` – 409 `SCHEDULE_CONFLICT`
+  (у `details` – перелік занять), слот залишається вільним. Якщо перевірка недоступна, бронювання
+  виконується без неї. Відповідь містить `scheduleCheck`.
+- `GET /api/bookings/my` містить `subject` для студента й викладача; академічні дані студента
+  викладачу не передаються. `GET /api/admin/stats` містить блок `academic` (постачальник, демо-режим,
+  доступність, кількість дисциплін і зіставлених студентів і викладачів).
 
 ## Клієнтський інтерфейс
 

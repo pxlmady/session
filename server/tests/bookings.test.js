@@ -53,10 +53,13 @@ describe('TC-06. Бронювання вільного слота (FR-15)', () =
       id: expect.any(Number),
       slotId: slot.id,
       studentId: student.user.id,
+      subjectId: null,
       topic: TOPIC,
       status: 'PENDING',
       createdAt: expect.any(String),
       updatedAt: expect.any(String),
+      // Етап 8 (FR-36): студент без зіставлення – бронювання без перевірки накладок
+      scheduleCheck: 'UNAVAILABLE',
     });
     expect(await slotStatus(slot.id)).toBe('BOOKED');
 

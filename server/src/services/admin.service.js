@@ -16,8 +16,9 @@ function countBy(groups, field, keys) {
 // записи за статусами і записи в розрізі викладачів (усі статуси).
 // У розрізі викладачів показуються поточні викладачі, а також користувачі, які мають
 // слоти, але роль яких змінено, щоб записи не зникали зі статистики.
-export async function getStats() {
-  const [roleGroups, slotsTotal, statusGroups, teachers] = await Promise.all([
+// FR-40: блок academic – стан академічної інтеграції (без академічних даних студентів).
+export async function getStats(academic) {
+  const [roleGroups, slotsTotal, statusGroups, teachers, academicSummary] = await Promise.all([
     prisma.user.groupBy({ by: ['role'], _count: { _all: true } }),
     prisma.slot.count(),
     prisma.booking.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -29,6 +30,7 @@ export async function getStats() {
         slots: { select: { _count: { select: { bookings: true } } } },
       },
     }),
+    academic.getAdminSummary(),
   ]);
 
   const bookingsByTeacher = teachers
@@ -49,6 +51,7 @@ export async function getStats() {
     slotsTotal,
     bookingsByStatus: countBy(statusGroups, 'status', BOOKING_STATUSES),
     bookingsByTeacher,
+    academic: academicSummary,
   };
 }
 

@@ -1,0 +1,7 @@
+[
+  { "externalId": "DEMO-SUBJ-WEB", "name": "Вебпрограмування" },
+  { "externalId": "DEMO-SUBJ-DB", "name": "Бази даних" },
+  { "externalId": "DEMO-SUBJ-ALG", "name": "Алгоритми та структури даних" },
+  { "externalId": "DEMO-SUBJ-SE", "name": "Інженерія програмного забезпечення" },
+  { "externalId": "DEMO-SUBJ-MATH", "name": "Вища математика" }
+]
