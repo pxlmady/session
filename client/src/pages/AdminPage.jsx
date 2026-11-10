@@ -40,7 +40,7 @@ function StatCard({ label, value }) {
 }
 
 function Stats() {
-  const { data, loading, error, reload } = useRequest(() => adminApi.stats());
+  const { data, loading, error, reload } = useRequest(() => adminApi.stats(), '', 'admin-stats');
   const state = <PageState loading={loading && !data} error={error} onRetry={reload} />;
   if (!data) return state;
 
@@ -93,7 +93,7 @@ function Users() {
   const { user: me } = useAuth();
   const notify = useNotify();
   const isMobile = useMediaQuery((theme) => theme.breakpoints.down('sm'));
-  const { data, loading, error, reload } = useRequest(() => adminApi.users());
+  const { data, loading, error, reload } = useRequest(() => adminApi.users(), '', 'admin-users');
   const [change, setChange] = useState(null); // { user, role }
   const [saving, setSaving] = useState(false);
   const [changeError, setChangeError] = useState('');

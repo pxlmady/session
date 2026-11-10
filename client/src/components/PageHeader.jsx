@@ -1,7 +1,9 @@
 import { Stack, Typography } from '@mui/material';
+import { usePageTitle } from '../hooks/usePageTitle.js';
 
-// Заголовок сторінки (h1) з необов'язковою головною дією праворуч
+// Заголовок сторінки (h1) з необов'язковою головною дією праворуч; він же – заголовок вкладки
 export function PageHeader({ title, action }) {
+  usePageTitle(title);
   return (
     <Stack
       direction={{ xs: 'column', sm: 'row' }}

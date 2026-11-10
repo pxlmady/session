@@ -19,6 +19,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../context/auth-context.js';
 import { ROLE_LABELS } from '../utils/labels.js';
+import { ThemeModeToggle } from './ThemeModeToggle.jsx';
 import { menuItems, roleHome } from '../utils/roles.js';
 
 // Каркас захищених сторінок: верхня панель із меню ролі, ПІБ і роллю, кнопкою «Вийти»;
@@ -32,7 +33,7 @@ export function AppLayout() {
   const userLabel = `${user.fullName} · ${ROLE_LABELS[user.role]}`;
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'grey.50' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="sticky">
         <Toolbar sx={{ gap: 1 }}>
           <IconButton
@@ -67,6 +68,7 @@ export function AppLayout() {
             ))}
           </Box>
           <Box sx={{ flexGrow: 1, display: { md: 'none' } }} />
+          <ThemeModeToggle />
           <Typography
             variant="body2"
             noWrap

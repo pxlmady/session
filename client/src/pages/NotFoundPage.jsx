@@ -1,10 +1,12 @@
 import { Link as RouterLink } from 'react-router';
 import { Button, Stack, Typography } from '@mui/material';
 import { useAuth } from '../context/auth-context.js';
+import { usePageTitle } from '../hooks/usePageTitle.js';
 import { roleHome } from '../utils/roles.js';
 
 export default function NotFoundPage() {
   const { user } = useAuth();
+  usePageTitle('Сторінку не знайдено');
   return (
     <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center', py: 8, px: 2 }}>
       <Typography variant="h4" component="h1">

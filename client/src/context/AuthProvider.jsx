@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authApi } from '../api/index.js';
 import { getToken, setToken, setUnauthorizedHandler } from '../api/client.js';
+import { clearRequestCache } from '../hooks/useRequest.js';
 import { AuthContext } from './auth-context.js';
 
 // Стан автентифікації: 'checking' – перевірка збереженого токена, 'guest', 'authenticated'
@@ -9,7 +10,9 @@ export function AuthProvider({ children }) {
   const [status, setStatus] = useState(() => (getToken() ? 'checking' : 'guest'));
   const [sessionMessage, setSessionMessage] = useState('');
 
+  // Кешовані дані сторінок належать попередньому користувачу, тому кеш очищується
   const logout = useCallback((message = '') => {
+    clearRequestCache();
     setToken(null);
     setUser(null);
     setStatus('guest');
@@ -51,6 +54,7 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (credentials) => {
     const result = await authApi.login(credentials);
+    clearRequestCache();
     setToken(result.token);
     setUser(result.user);
     setStatus('authenticated');

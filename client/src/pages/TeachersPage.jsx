@@ -26,7 +26,11 @@ export default function TeachersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data, loading, error, reload } = useRequest(() => teachersApi.list(query), query);
+  const { data, loading, error, reload } = useRequest(
+    () => teachersApi.list(query),
+    query,
+    'teachers',
+  );
   const teachers = data ?? [];
 
   return (

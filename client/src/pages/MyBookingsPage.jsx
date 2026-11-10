@@ -46,7 +46,11 @@ export default function MyBookingsPage() {
   const [dialogError, setDialogError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const { data, loading, error, reload } = useRequest(() => bookingsApi.listMy(period), period);
+  const { data, loading, error, reload } = useRequest(
+    () => bookingsApi.listMy(period),
+    period,
+    'my-bookings',
+  );
   const bookings = data ?? [];
 
   const runAction = async (action, booking) => {

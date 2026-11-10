@@ -23,6 +23,7 @@ import { Location } from '../components/Location.jsx';
 import { PageState } from '../components/PageState.jsx';
 import { useAuth } from '../context/auth-context.js';
 import { useNotify } from '../context/notification-context.js';
+import { usePageTitle } from '../hooks/usePageTitle.js';
 import { useRequest } from '../hooks/useRequest.js';
 import { ApiError } from '../api/client.js';
 import { formatDate, formatTimeRange } from '../utils/datetime.js';
@@ -56,8 +57,10 @@ export default function TeacherSlotsPage() {
         ? loadTeacherPage(id, state?.teacher)
         : Promise.reject(new ApiError(404, 'TEACHER_NOT_FOUND', 'Викладача не знайдено')),
     String(id),
+    'teacher-slots',
   );
   const teacher = data?.teacher;
+  usePageTitle(teacher?.fullName ?? 'Слоти викладача');
   const slots = data?.slots ?? [];
 
   const handleBooked = () => {

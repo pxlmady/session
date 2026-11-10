@@ -71,7 +71,7 @@ export default function SlotsPage() {
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
 
-  const { data, loading, error, reload } = useRequest(() => slotsApi.listMy());
+  const { data, loading, error, reload } = useRequest(() => slotsApi.listMy(), '', 'my-slots');
   const allSlots = data ?? [];
   // Розподіл на вкладки на клієнті за часом завершення слота
   const slots = allSlots.filter((slot) =>
