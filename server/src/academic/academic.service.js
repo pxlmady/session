@@ -10,7 +10,8 @@ import {
   providerInfoSchema,
   subjectListSchema,
 } from './schemas.js';
-import { addDays, zonedTimeToUtc } from './time.js';
+import { currentSemester } from './grading.js';
+import { addDays, zonedDateString, zonedTimeToUtc } from './time.js';
 
 // Сервіс академічної інтеграції (ТЗ п. 4.1.5, FR-27 – FR-37, FR-40). Єдина точка звернення
 // до постачальника: зіставлення користувача, тайм-аут, перевірка даних схемами Zod,
@@ -187,34 +188,143 @@ export function createAcademicService({ provider, timeoutMs = DEFAULT_TIMEOUT_MS
     });
   }
 
-  // FR-29: оцінки, за потреби – лише вказаного семестру
+  // Оцінки, виставлені викладачами в Session за результатом консультацій (етап 9б),
+  // у форматі оцінок джерела з позначкою setInSession
+  async function loadSessionGrades(userId) {
+    const grades = await prisma.gradeEntry.findMany({
+      where: { studentId: userId, provider: name },
+      select: {
+        id: true,
+        semester: true,
+        controlType: true,
+        score: true,
+        nationalGrade: true,
+        createdAt: true,
+        bookingId: true,
+        subject: { select: { id: true, name: true } },
+        booking: { select: { slot: { select: { teacher: { select: { fullName: true } } } } } },
+      },
+    });
+    return grades.map((grade) => ({
+      id: `SESSION-${grade.id}`,
+      semester: grade.semester,
+      controlType: grade.controlType,
+      score: grade.score,
+      nationalGrade: grade.nationalGrade,
+      date: zonedDateString(grade.createdAt),
+      subject: grade.subject,
+      setInSession: {
+        bookingId: grade.bookingId,
+        teacherName: grade.booking.slot.teacher.fullName,
+      },
+    }));
+  }
+
+  // FR-29: оцінки, за потреби – лише вказаного семестру. Оцінки джерела доповнюються
+  // оцінками, виставленими в Session (етап 9б); у джерелі нічого не змінюється.
   function getMyRecords(user, { semester } = {}) {
     return respond(user, async (externalId) => {
-      const records = await callOrFail('getStudentRecords', academicRecordsSchema, externalId, {
-        semester,
-      });
-      const filtered = records
+      const [records, sessionGrades] = await Promise.all([
+        callOrFail('getStudentRecords', academicRecordsSchema, externalId, { semester }),
+        loadSessionGrades(user.id),
+      ]);
+      const fromProvider = (await attachSubjects(records)).map((record) => ({
+        ...record,
+        setInSession: null,
+      }));
+      return [...fromProvider, ...sessionGrades]
         .filter((record) => !semester || record.semester === semester)
-        .sort((a, b) => a.semester - b.semester || a.date.localeCompare(b.date));
-      return attachSubjects(filtered);
+        .sort(
+          (a, b) =>
+            a.semester - b.semester || a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
+        );
     });
+  }
+
+  // Заборгованості студента з урахуванням закриттів у Session (етап 9б). Заборгованість,
+  // яку викладач закрив після консультації (DebtClosure), повертається зі статусом closed
+  // і полем closedInSession; дані джерела при цьому не змінюються.
+  async function loadDebts(userId, externalId) {
+    const [debts, closures] = await Promise.all([
+      callOrFail('getStudentDebts', academicDebtsSchema, externalId, { status: 'all' }),
+      prisma.debtClosure.findMany({
+        where: { studentId: userId, provider: name },
+        select: {
+          debtId: true,
+          createdAt: true,
+          bookingId: true,
+          booking: { select: { slot: { select: { teacher: { select: { fullName: true } } } } } },
+        },
+      }),
+    ]);
+    const closed = new Map(closures.map((closure) => [closure.debtId, closure]));
+    const withClosures = debts.map((debt) => {
+      const closure = closed.get(debt.id);
+      if (!closure) return { ...debt, closedInSession: null };
+      return {
+        ...debt,
+        status: 'closed',
+        closedInSession: {
+          closedAt: closure.createdAt.toISOString(),
+          bookingId: closure.bookingId,
+          teacherName: closure.booking.slot.teacher.fullName,
+        },
+      };
+    });
+    withClosures.sort(
+      (a, b) =>
+        (a.deadline ?? '9999-12-31').localeCompare(b.deadline ?? '9999-12-31') ||
+        a.id.localeCompare(b.id),
+    );
+    return attachSubjects(withClosures);
   }
 
   // FR-30: заборгованості; за замовчуванням лише відкриті
   function getMyDebts(user, { status = 'open' } = {}) {
     return respond(user, async (externalId) => {
-      const debts = await callOrFail('getStudentDebts', academicDebtsSchema, externalId, {
-        status,
-      });
-      const filtered = debts
-        .filter((debt) => status === 'all' || debt.status === 'open')
-        .sort(
-          (a, b) =>
-            (a.deadline ?? '9999-12-31').localeCompare(b.deadline ?? '9999-12-31') ||
-            a.id.localeCompare(b.id),
-        );
-      return attachSubjects(filtered);
+      const debts = await loadDebts(user.id, externalId);
+      return debts.filter((debt) => status === 'all' || debt.status === 'open');
     });
+  }
+
+  // Етап 9б: дані для фіксації результату консультації з дисципліни subjectId – відкриті
+  // заборгованості студента лише з цієї дисципліни та поточний семестр студента (для оцінки).
+  // Оцінок, профілю та інших академічних даних студента викладач не отримує.
+  // Якщо студента не зіставлено або джерело недоступне, available = false.
+  async function getResultOptions(studentId, subjectId) {
+    const externalId = await findExternalId(studentId);
+    if (!externalId || !subjectId) {
+      return {
+        mapped: Boolean(externalId),
+        available: Boolean(externalId),
+        debts: [],
+        semester: null,
+      };
+    }
+    try {
+      const [debts, profile] = await Promise.all([
+        loadDebts(studentId, externalId),
+        callOrFail('getStudentProfile', academicProfileSchema, externalId),
+      ]);
+      return {
+        mapped: true,
+        available: true,
+        debts: debts
+          .filter((debt) => debt.status === 'open' && debt.subject.id === subjectId)
+          .map(({ id, debtType, description, deadline }) => ({
+            id,
+            debtType,
+            description,
+            deadline,
+          })),
+        semester: profile ? currentSemester(profile.course) : null,
+      };
+    } catch (err) {
+      if (err instanceof AppError && err.code === 'ACADEMIC_PROVIDER_UNAVAILABLE') {
+        return { mapped: true, available: false, debts: [], semester: null };
+      }
+      throw err;
+    }
   }
 
   // FR-31: розклад занять за календарні дні from – to (дати Europe/Kyiv, до 31 доби),
@@ -307,6 +417,7 @@ export function createAcademicService({ provider, timeoutMs = DEFAULT_TIMEOUT_MS
     getMyRecords,
     getMyDebts,
     getMySchedule,
+    getResultOptions,
     checkSlots,
     checkSlot,
     getAdminSummary,

@@ -2,7 +2,11 @@ import { Router } from 'express';
 import * as bookingController from '../controllers/booking.controller.js';
 import { auth, requireRole } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { createBookingSchema, myBookingsQuerySchema } from '../validation/booking.schemas.js';
+import {
+  completeBookingSchema,
+  createBookingSchema,
+  myBookingsQuerySchema,
+} from '../validation/booking.schemas.js';
 import { idParamsSchema } from '../validation/common.schemas.js';
 
 // Роль перевіряє requireRole, належність запису або слота – сервіс (ТЗ, розділ 12)
@@ -38,6 +42,21 @@ bookingsRouter.patch(
   requireRole('TEACHER'),
   validate(idParamsSchema, 'params'),
   bookingController.reject,
+);
+
+// Результат консультації (етап 9б): викладач (власник слота), лише після її завершення
+bookingsRouter.get(
+  '/:id/result-options',
+  requireRole('TEACHER'),
+  validate(idParamsSchema, 'params'),
+  bookingController.resultOptions,
+);
+bookingsRouter.patch(
+  '/:id/complete',
+  requireRole('TEACHER'),
+  validate(idParamsSchema, 'params'),
+  validate(completeBookingSchema),
+  bookingController.complete,
 );
 
 // FR-20: скасування – студент (власник запису) або викладач (власник слота)

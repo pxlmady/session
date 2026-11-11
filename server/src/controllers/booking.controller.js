@@ -25,3 +25,26 @@ export async function reject(req, res) {
 export async function cancel(req, res) {
   res.json(await bookingService.cancelBooking(req.user, req.validated.params.id));
 }
+
+// Результат консультації після її завершення (етап 9б)
+export async function complete(req, res) {
+  res.json(
+    await bookingService.completeBooking(
+      req.user,
+      req.validated.params.id,
+      req.body,
+      req.app.locals.academic,
+    ),
+  );
+}
+
+// Що викладач може зафіксувати за результатом консультації: заборгованості й оцінка (етап 9б)
+export async function resultOptions(req, res) {
+  res.json(
+    await bookingService.getResultOptions(
+      req.user,
+      req.validated.params.id,
+      req.app.locals.academic,
+    ),
+  );
+}

@@ -4,6 +4,7 @@ import { Box, Button, Stack, Tab, Tabs } from '@mui/material';
 import { bookingsApi } from '../api/index.js';
 import { BookingCard } from '../components/BookingCard.jsx';
 import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
+import { ConsultationResultDialog } from '../components/ConsultationResultDialog.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { PageState } from '../components/PageState.jsx';
 import { useAuth } from '../context/auth-context.js';
@@ -45,6 +46,7 @@ export default function MyBookingsPage() {
   const [pending, setPending] = useState(null); // { action, booking } для діалогу підтвердження
   const [dialogError, setDialogError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [resultFor, setResultFor] = useState(null); // запис для діалогу результату консультації
 
   const { data, loading, error, reload } = useRequest(
     () => bookingsApi.listMy(period),
@@ -73,10 +75,13 @@ export default function MyBookingsPage() {
     }
   };
 
-  // «Підтвердити» виконується одразу; «Відхилити» і «Скасувати» – через діалог
+  // «Підтвердити» виконується одразу; «Відхилити» і «Скасувати» – через діалог підтвердження;
+  // «Зафіксувати результат» (після завершення консультації) – через діалог результату
   const handleAction = (action, booking) => {
     if (action === 'confirm') {
       runAction(action, booking);
+    } else if (action === 'complete') {
+      setResultFor(booking);
     } else {
       setDialogError('');
       setPending({ action, booking });
@@ -123,6 +128,30 @@ export default function MyBookingsPage() {
             />
           ))}
         </Stack>
+      )}
+
+      {resultFor && (
+        <ConsultationResultDialog
+          key={resultFor.id}
+          booking={resultFor}
+          onClose={(changed) => {
+            setResultFor(null);
+            if (changed) reload();
+          }}
+          onSaved={(result) => {
+            setResultFor(null);
+            const done = [
+              result?.gradeEntry && 'оцінку виставлено',
+              result?.debtClosure && 'заборгованість закрито',
+            ].filter(Boolean);
+            notify(
+              done.length
+                ? `Консультацію проведено, ${done.join(', ')}`
+                : 'Консультацію позначено як проведену',
+            );
+            reload();
+          }}
+        />
       )}
 
       <ConfirmDialog

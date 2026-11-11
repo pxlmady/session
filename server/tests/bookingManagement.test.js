@@ -239,6 +239,10 @@ describe('FR-18, FR-19. Мої записи (GET /api/bookings/my)', () => {
         subject: null,
         topic: TOPIC,
         status: 'PENDING',
+        conductedAt: null,
+        teacherNote: null,
+        debtClosure: null,
+        gradeEntry: null,
         createdAt: expect.any(String),
         updatedAt: expect.any(String),
         slot: {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import {
+  Alert,
   Card,
   CardContent,
+  Chip,
   Grid,
   MenuItem,
   Select,
@@ -22,6 +24,8 @@ import { PageState } from '../components/PageState.jsx';
 import { useAuth } from '../context/auth-context.js';
 import { useNotify } from '../context/notification-context.js';
 import { useRequest } from '../hooks/useRequest.js';
+import { DemoChip } from '../components/DemoDataBanner.jsx';
+import { formatDate } from '../utils/datetime.js';
 import { BOOKING_STATUS, ROLE_LABELS } from '../utils/labels.js';
 
 function StatCard({ label, value }) {
@@ -86,6 +90,63 @@ function Stats() {
         </Table>
       </TableContainer>
     </Stack>
+  );
+}
+
+// Назва постачальника академічних даних для адміністратора
+const PROVIDER_NAMES = { mock: 'MockAcademicProvider' };
+
+// Стан академічної інтеграції (FR-40): постачальник, демонстраційний режим, доступність,
+// актуальність даних і кількість зіставлень. Зіставлення в інтерфейсі не редагуються.
+function AcademicIntegration() {
+  const { data, loading, error, reload } = useRequest(() => adminApi.stats(), '', 'admin-stats');
+  if (!data) return <PageState loading={loading} error={error} onRetry={reload} skeletonRows={1} />;
+  const academic = data.academic;
+  if (!academic) return null;
+
+  return (
+    <Card variant="outlined">
+      <CardContent>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, mb: 2 }}
+        >
+          <Typography sx={{ fontWeight: 600 }}>
+            {PROVIDER_NAMES[academic.provider] ?? academic.provider}
+          </Typography>
+          {academic.isDemo !== false && <DemoChip />}
+          <Chip
+            size="small"
+            color={academic.available ? 'success' : 'error'}
+            label={academic.available ? 'Доступний' : 'Недоступний'}
+          />
+        </Stack>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {[
+            ['Дисциплін', academic.subjectsTotal],
+            ['Зіставлених студентів', academic.linkedStudents],
+            ['Зіставлених викладачів', academic.linkedTeachers],
+          ].map(([label, value]) => (
+            <Grid key={label} size={{ xs: 12, sm: 4 }}>
+              <Typography variant="h5" component="p">
+                {value ?? 0}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {label}
+              </Typography>
+            </Grid>
+          ))}
+        </Grid>
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          <b>Дані станом на:</b> {academic.dataAsOf ? formatDate(academic.dataAsOf) : '—'}
+        </Typography>
+        <Alert severity="info" variant="outlined">
+          Session не синхронізується з системою університету: академічні дані надає тестовий
+          постачальник, зіставлення створюються під час заповнення бази (seed).
+        </Alert>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -202,7 +263,8 @@ function Users() {
   );
 }
 
-// Адміністрування (FR-25, FR-26): статистика і керування ролями користувачів
+// Адміністрування (FR-25, FR-26, FR-40): статистика, стан академічної інтеграції
+// і керування ролями користувачів
 export default function AdminPage() {
   return (
     <>
@@ -213,6 +275,12 @@ export default function AdminPage() {
             Статистика
           </Typography>
           <Stats />
+        </section>
+        <section>
+          <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
+            Академічна інтеграція
+          </Typography>
+          <AcademicIntegration />
         </section>
         <section>
           <Typography variant="h6" component="h2" sx={{ mb: 2 }}>

@@ -1,11 +1,27 @@
-import { Button, Card, CardActions, CardContent, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Chip,
+  Stack,
+  Typography,
+} from '@mui/material';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import { formatDate, formatTimeRange, isFuture } from '../utils/datetime.js';
 import { Location } from './Location.jsx';
 import { StatusChip } from './StatusChip.jsx';
 
 // Дії із записом залежно від статусу, ролі та часу (UX, табл. 5.2)
+// Після завершення підтвердженої консультації викладач може один раз зафіксувати її результат
 function bookingActions(booking, role) {
-  if (!isFuture(booking.slot.startAt)) return [];
+  if (!isFuture(booking.slot.startAt)) {
+    const finished = !isFuture(booking.slot.endAt);
+    const canComplete =
+      role === 'TEACHER' && finished && booking.status === 'CONFIRMED' && !booking.conductedAt;
+    return canComplete ? ['complete'] : [];
+  }
   if (booking.status === 'PENDING') {
     return role === 'TEACHER' ? ['confirm', 'reject', 'cancel'] : ['cancel'];
   }
@@ -22,7 +38,7 @@ function Field({ label, children }) {
 }
 
 // Картка запису: час, статус, викладач (для студента) або студент (для викладача),
-// місце, тема та доступні дії
+// місце, дисципліна (FR-39, якщо запис створено з контекстом дисципліни), тема та доступні дії
 export function BookingCard({ booking, role, onAction, busy }) {
   const { slot, student } = booking;
   const actions = bookingActions(booking, role);
@@ -39,9 +55,18 @@ export function BookingCard({ booking, role, onAction, busy }) {
           <Typography variant="h6" component="h2" sx={{ fontSize: '1.05rem' }}>
             {formatDate(slot.startAt)} · {formatTimeRange(slot.startAt, slot.endAt)}
           </Typography>
-          <div>
+          <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5 }}>
             <StatusChip entity="booking" status={booking.status} />
-          </div>
+            {booking.conductedAt && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color="success"
+                icon={<TaskAltIcon />}
+                label="Проведено"
+              />
+            )}
+          </Stack>
         </Stack>
         <Stack spacing={0.5}>
           {role === 'TEACHER' ? (
@@ -57,11 +82,36 @@ export function BookingCard({ booking, role, onAction, busy }) {
           <Field label="Місце">
             <Location value={slot.location} />
           </Field>
+          {booking.subject && <Field label="Дисципліна">{booking.subject.name}</Field>}
           <Field label="Тема">{booking.topic}</Field>
+          {booking.teacherNote && (
+            <Field label="Рекомендація викладача">{booking.teacherNote}</Field>
+          )}
         </Stack>
+        {booking.gradeEntry && (
+          <Alert severity="info" variant="outlined" sx={{ mt: 1.5 }}>
+            Оцінка за результатом консультації: {booking.gradeEntry.controlType},{' '}
+            {booking.gradeEntry.score} балів ({booking.gradeEntry.nationalGrade}),{' '}
+            {booking.gradeEntry.semester} семестр.
+          </Alert>
+        )}
+        {booking.debtClosure && (
+          <Alert severity="success" variant="outlined" sx={{ mt: 1.5 }}>
+            Заборгованість закрито за результатом консультації: {booking.debtClosure.debtTitle}.
+          </Alert>
+        )}
       </CardContent>
       {actions.length > 0 && (
         <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+          {actions.includes('complete') && (
+            <Button
+              variant="contained"
+              disabled={busy}
+              onClick={() => onAction('complete', booking)}
+            >
+              Зафіксувати результат
+            </Button>
+          )}
           {actions.includes('confirm') && (
             <Button
               variant="contained"

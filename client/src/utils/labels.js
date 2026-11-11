@@ -20,3 +20,18 @@ export const ROLE_LABELS = {
 
 // Активні записи: на слот може існувати не більше одного такого запису
 export const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED'];
+
+// Статус академічної заборгованості (FR-30)
+export const DEBT_STATUS = {
+  open: { label: 'Відкрита', color: 'warning' },
+  closed: { label: 'Закрита', color: 'default' },
+};
+
+// Мінімальний позитивний бал (100-бальна шкала): нижчий бал – незадовільна оцінка
+export const PASSING_SCORE = 60;
+
+// Назва постачальника академічних даних для інтерфейсу
+export function providerLabel(provider) {
+  if (provider === 'mock') return 'демонстраційний постачальник (mock)';
+  return provider || '—';
+}

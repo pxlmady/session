@@ -133,6 +133,7 @@ describe('TC-14: академічні дані зіставленого студ
       score: 52,
       nationalGrade: 'Незадовільно',
       date: '2026-06-12',
+      setInSession: null,
     });
   });
 
@@ -147,6 +148,7 @@ describe('TC-14: академічні дані зіставленого студ
       description: expect.any(String),
       deadline: '2026-12-15',
       status: 'open',
+      closedInSession: null,
     });
 
     const all = await request(app)

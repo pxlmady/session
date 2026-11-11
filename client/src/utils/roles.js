@@ -1,6 +1,6 @@
-// Стартова сторінка ролі (ТЗ, п. 13.2): студент – /teachers, викладач – /slots, адміністратор – /admin
+// Стартова сторінка ролі (ТЗ, п. 4.1, FR-38): студент – /dashboard, викладач – /slots, адміністратор – /admin
 const ROLE_HOME = {
-  STUDENT: '/teachers',
+  STUDENT: '/dashboard',
   TEACHER: '/slots',
   ADMIN: '/admin',
 };
@@ -12,6 +12,9 @@ export function roleHome(user) {
 // Пункти навігаційного меню за ролями (UX, табл. 2.2)
 const MENU = {
   STUDENT: [
+    { label: 'Головна', to: '/dashboard' },
+    { label: 'Розклад', to: '/schedule' },
+    { label: 'Успішність', to: '/academic' },
     { label: 'Викладачі', to: '/teachers' },
     { label: 'Мої записи', to: '/my-bookings' },
     { label: 'Профіль', to: '/profile' },

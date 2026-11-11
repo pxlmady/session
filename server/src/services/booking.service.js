@@ -1,6 +1,12 @@
+import { GRADE_CONTROL_TYPES, nationalGrade, PASSING_SCORE } from '../academic/grading.js';
 import { AppError } from '../lib/errors.js';
 import { prisma } from '../lib/prisma.js';
-import { bookingSelect, bookingStudentSelect, teacherSelect } from '../lib/selects.js';
+import {
+  bookingResultSelect,
+  bookingSelect,
+  bookingStudentSelect,
+  teacherSelect,
+} from '../lib/selects.js';
 import { NOTIFICATION_EVENTS, notifyBookingEvent } from './notification.service.js';
 import { assertSubjectExists } from './subject.service.js';
 
@@ -91,6 +97,7 @@ export async function createBooking(
 // Студент отримує лише власні записи, викладач – лише записи на власні слоти.
 const myBookingSelect = {
   ...bookingSelect,
+  ...bookingResultSelect,
   slot: {
     select: {
       id: true,
@@ -222,6 +229,156 @@ async function changeBookingStatus(user, bookingId, action) {
   // Лист іншому учаснику консультації надсилається у фоні після фіксації змін
   notifyBookingEvent(transition.event, bookingId, { cancelledBy: user.role });
   return updated;
+}
+
+// Результат консультації (етап 9б). Викладач (власник слота) може зафіксувати результат
+// підтвердженої консультації лише після її завершення (endAt слота минув) і лише один раз.
+async function findCompletableBooking(user, bookingId) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      status: true,
+      conductedAt: true,
+      studentId: true,
+      subject: { select: { id: true, name: true } },
+      slot: { select: { teacherId: true, endAt: true } },
+    },
+  });
+  if (!booking) {
+    throw new AppError(404, 'BOOKING_NOT_FOUND', 'Запис не знайдено');
+  }
+  if (user.role !== 'TEACHER' || booking.slot.teacherId !== user.id) {
+    throw new AppError(403, 'FORBIDDEN', 'Недостатньо прав для зміни цього запису');
+  }
+  if (booking.status !== 'CONFIRMED') {
+    throw new AppError(
+      409,
+      'INVALID_STATUS_TRANSITION',
+      'Проведеною можна позначити лише підтверджену консультацію',
+    );
+  }
+  if (booking.slot.endAt.getTime() > Date.now()) {
+    throw new AppError(
+      409,
+      'BOOKING_NOT_FINISHED',
+      'Консультація ще не завершилася. Результат можна зафіксувати після її завершення',
+    );
+  }
+  if (booking.conductedAt) {
+    throw new AppError(409, 'BOOKING_ALREADY_COMPLETED', 'Результат консультації вже зафіксовано');
+  }
+  return booking;
+}
+
+const debtNotClosable = () =>
+  new AppError(
+    409,
+    'DEBT_NOT_CLOSABLE',
+    'Заборгованість не знайдено серед відкритих заборгованостей студента з дисципліни запису',
+  );
+
+const gradeNotAllowed = () =>
+  new AppError(
+    409,
+    'GRADE_NOT_ALLOWED',
+    'Оцінку можна виставити лише за консультацію з дисципліни для студента з академічними даними',
+  );
+
+const providerUnavailable = () =>
+  new AppError(
+    503,
+    'ACADEMIC_PROVIDER_UNAVAILABLE',
+    'Джерело академічних даних тимчасово недоступне. Спробуйте пізніше',
+  );
+
+// Що викладач може зафіксувати за результатом консультації: відкриті заборгованості студента
+// з дисципліни запису і можливість виставити оцінку з цієї дисципліни (поточний семестр)
+async function loadResultOptions(booking, academic) {
+  const subjectId = booking.subject?.id ?? null;
+  const { mapped, available, debts, semester } = await academic.getResultOptions(
+    booking.studentId,
+    subjectId,
+  );
+  const grading =
+    subjectId && available && semester
+      ? { semester, controlTypes: GRADE_CONTROL_TYPES, passingScore: PASSING_SCORE }
+      : null;
+  return { mapped, available, debts, grading };
+}
+
+// GET /api/bookings/:id/result-options: відкриті заборгованості студента з дисципліни запису,
+// які викладач може закрити, і параметри оцінки (семестр, форми контролю). Доступно лише тоді,
+// коли результат можна зафіксувати (ті самі перевірки). Це єдині академічні дані студента,
+// які бачить викладач: лише дисципліна запису і лише після проведеної консультації.
+export async function getResultOptions(user, bookingId, academic) {
+  const booking = await findCompletableBooking(user, bookingId);
+  const { available, debts, grading } = await loadResultOptions(booking, academic);
+  return { subject: booking.subject, available, debts, grading };
+}
+
+// PATCH /api/bookings/:id/complete: позначка «Проведено», необов'язкова рекомендація
+// студентові (note), закриття однієї відкритої заборгованості студента з дисципліни запису
+// (closeDebtId) і оцінка з цієї дисципліни (grade). Закриття та оцінка зберігаються в Session
+// (DebtClosure, GradeEntry); у джерелі академічних даних нічого не змінюється.
+// Статус запису лишається CONFIRMED.
+export async function completeBooking(user, bookingId, { note, closeDebtId, grade }, academic) {
+  const booking = await findCompletableBooking(user, bookingId);
+
+  let debt = null;
+  let gradeData = null;
+  if (closeDebtId || grade) {
+    if (!booking.subject) throw closeDebtId ? debtNotClosable() : gradeNotAllowed();
+    const { mapped, available, debts, grading } = await loadResultOptions(booking, academic);
+    if (!available && mapped) throw providerUnavailable();
+    if (closeDebtId) {
+      debt = debts.find((item) => item.id === closeDebtId) ?? null;
+      if (!debt) throw debtNotClosable();
+    }
+    if (grade) {
+      if (!grading) throw gradeNotAllowed();
+      gradeData = {
+        studentId: booking.studentId,
+        provider: academic.name,
+        subjectId: booking.subject.id,
+        semester: grading.semester,
+        controlType: grade.controlType,
+        score: grade.score,
+        nationalGrade: nationalGrade(grade.score, grade.controlType),
+        bookingId,
+      };
+    }
+  }
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      // Умовне оновлення: одночасний повторний запит не перезапише результат
+      const { count } = await tx.booking.updateMany({
+        where: { id: bookingId, status: 'CONFIRMED', conductedAt: null },
+        data: { conductedAt: new Date(), teacherNote: note || null },
+      });
+      if (count === 0) throw changedConcurrently();
+      if (debt) {
+        await tx.debtClosure.create({
+          data: {
+            studentId: booking.studentId,
+            provider: academic.name,
+            debtId: debt.id,
+            debtTitle: debt.debtType,
+            bookingId,
+          },
+        });
+      }
+      if (gradeData) await tx.gradeEntry.create({ data: gradeData });
+      return tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { ...bookingSelect, ...bookingResultSelect },
+      });
+    });
+  } catch (err) {
+    // Заборгованість уже закрито іншим записом (унікальність studentId + provider + debtId)
+    if (err.code === 'P2002') throw debtNotClosable();
+    throw err;
+  }
 }
 
 // FR-21: підтвердження запису викладачем (власником слота)

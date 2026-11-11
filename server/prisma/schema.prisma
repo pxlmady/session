@@ -44,6 +44,8 @@ model User {
   // Академічна інтеграція (ТЗ п. 4.1.5): дисципліни викладача і зіставлення з джерелом даних
   subjects        TeacherSubject[]
   academicMapping AcademicDataMapping?
+  debtClosures    DebtClosure[]
+  gradeEntries    GradeEntry[]
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 }
@@ -78,6 +80,12 @@ model Booking {
   topic          String
   status         BookingStatus @default(PENDING)
   reminderSentAt DateTime?
+  // Результат консультації (етап 9б): викладач після завершення консультації позначає її
+  // проведеною, може додати рекомендацію і закрити заборгованість студента з дисципліни запису
+  conductedAt    DateTime?
+  teacherNote    String?
+  debtClosure    DebtClosure?
+  gradeEntry     GradeEntry?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -92,13 +100,14 @@ model Booking {
 
 // Довідник дисциплін Session; externalId – код дисципліни в джерелі академічних даних
 model Subject {
-  id         Int              @id @default(autoincrement())
-  externalId String           @unique
-  name       String
-  teachers   TeacherSubject[]
-  bookings   Booking[]
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id           Int              @id @default(autoincrement())
+  externalId   String           @unique
+  name         String
+  teachers     TeacherSubject[]
+  bookings     Booking[]
+  gradeEntries GradeEntry[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 }
 
 // Зв'язок викладач – дисципліна (FR-32)
@@ -123,4 +132,47 @@ model AcademicDataMapping {
   createdAt  DateTime @default(now())
 
   @@unique([provider, externalId])
+}
+
+// Закриття академічної заборгованості викладачем після проведеної консультації (етап 9б).
+// Заборгованості надає постачальник академічних даних і в БД вони не зберігаються; тут
+// зберігається лише позначка Session «закрито» для заборгованості debtId цього постачальника.
+// Дані джерела не змінюються: позначка накладається на них у відповідях Session.
+model DebtClosure {
+  id        Int      @id @default(autoincrement())
+  student   User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId Int
+  provider  String
+  // Ідентифікатор заборгованості в джерелі та її назва на момент закриття
+  debtId    String
+  debtTitle String
+  // Консультація, за результатом якої закрито заборгованість (одна заборгованість на запис)
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId Int      @unique
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, provider, debtId])
+}
+
+// Оцінка, яку викладач виставив за результатом проведеної консультації (етап 9б).
+// Оцінки джерела академічних даних у БД не зберігаються і не змінюються; оцінка Session
+// додається до них у відповіді GET /api/academic/me/records з позначкою setInSession.
+model GradeEntry {
+  id            Int      @id @default(autoincrement())
+  student       User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     Int
+  provider      String
+  // Restrict: дисципліну з виставленими оцінками видалити не можна
+  subject       Subject  @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  subjectId     Int
+  semester      Int
+  controlType   String
+  score         Int
+  nationalGrade String
+  // Консультація, за результатом якої виставлено оцінку (одна оцінка на запис)
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId     Int      @unique
+  createdAt     DateTime @default(now())
+
+  @@index([studentId, provider])
 }

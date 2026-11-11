@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { GRADE_CONTROL_TYPES } from '../academic/grading.js';
 import { MAX_DB_INT, requiredString } from './common.schemas.js';
 
 // FR-15: бронювання слота. studentId і status визначає сервер, від клієнта вони не приймаються.
@@ -26,6 +27,37 @@ export const createBookingSchema = z.object({
   acknowledgeConflict: z
     .boolean({ error: 'Підтвердження накладки: очікується true або false' })
     .default(false),
+});
+
+// Результат консультації (етап 9б): необов'язкова рекомендація викладача (до 500 символів)
+// ідентифікатор заборгованості студента, яку викладач закриває, і оцінка (необов'язкові)
+export const completeBookingSchema = z.object({
+  note: z
+    .string({ error: 'Рекомендація: очікується рядок' })
+    .trim()
+    .max(500, 'Рекомендація: не більше 500 символів')
+    .nullish(),
+  closeDebtId: z
+    .string({ error: 'Заборгованість: очікується рядок' })
+    .trim()
+    .min(1, 'Заборгованість: вкажіть ідентифікатор')
+    .max(100, 'Заборгованість: не більше 100 символів')
+    .nullish(),
+  grade: z
+    .object(
+      {
+        controlType: z.enum(GRADE_CONTROL_TYPES, {
+          error: 'Оцінка: оберіть форму контролю зі списку',
+        }),
+        score: z
+          .number({ error: 'Оцінка: очікується ціле число балів' })
+          .int('Оцінка: очікується ціле число балів')
+          .min(0, 'Оцінка: не менше 0 балів')
+          .max(100, 'Оцінка: не більше 100 балів'),
+      },
+      { error: 'Оцінка: очікується форма контролю і бали' },
+    )
+    .nullish(),
 });
 
 // FR-18, FR-19: фільтр «Мої записи» – майбутні (upcoming) або минулі (past) консультації

@@ -22,6 +22,23 @@ export const bookingSelect = {
   updatedAt: true,
 };
 
+// Результат консультації, який викладач фіксує після її завершення (етап 9б)
+// debtClosure – заборгованість, закрита за результатом консультації, або null
+export const bookingResultSelect = {
+  conductedAt: true,
+  teacherNote: true,
+  debtClosure: { select: { debtId: true, debtTitle: true, createdAt: true } },
+  gradeEntry: {
+    select: {
+      semester: true,
+      controlType: true,
+      score: true,
+      nationalGrade: true,
+      createdAt: true,
+    },
+  },
+};
+
 // Дані студента, які бачить викладач у записах на свої слоти (FR-09)
 export const bookingStudentSelect = {
   id: true,

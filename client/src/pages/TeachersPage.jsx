@@ -1,22 +1,29 @@
 import { useEffect, useState } from 'react';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useSearchParams } from 'react-router';
 import {
+  Autocomplete,
   Card,
   CardActionArea,
   CardContent,
+  Chip,
   Grid,
   InputAdornment,
+  Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import { teachersApi } from '../api/index.js';
+import { subjectsApi, teachersApi } from '../api/index.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { PageState } from '../components/PageState.jsx';
 import { useRequest } from '../hooks/useRequest.js';
 
-// Список викладачів із пошуком за ПІБ (FR-13)
+// Список викладачів із пошуком за ПІБ (FR-13) і фільтром за дисципліною (FR-32).
+// Обрана дисципліна зберігається в адресі (?subjectId=) і передається на сторінку слотів.
 export default function TeachersPage() {
+  const [params, setParams] = useSearchParams();
+  const subjectParam = Number(params.get('subjectId'));
+  const subjectId = Number.isInteger(subjectParam) && subjectParam > 0 ? subjectParam : null;
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
 
@@ -26,41 +33,69 @@ export default function TeachersPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const subjectsRequest = useRequest(() => subjectsApi.list(), '', 'subjects');
+  const subjects = subjectsRequest.data ?? [];
+  const subject = subjects.find((s) => s.id === subjectId) ?? null;
+
   const { data, loading, error, reload } = useRequest(
-    () => teachersApi.list(query),
-    query,
+    () => teachersApi.list({ search: query, subjectId }),
+    `${query}|${subjectId ?? ''}`,
     'teachers',
   );
   const teachers = data ?? [];
 
+  const setSubject = (value) => {
+    const next = new URLSearchParams(params);
+    if (value) next.set('subjectId', String(value.id));
+    else next.delete('subjectId');
+    setParams(next, { replace: true });
+  };
+
+  let emptyText = 'Викладачів не знайдено';
+  if (query) emptyText = `Викладачів не знайдено за запитом «${query}»`;
+  if (subject) emptyText += ` з дисципліни «${subject.name}»`;
+
   return (
     <>
       <PageHeader title="Викладачі" />
-      <TextField
-        label="Пошук за ПІБ"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        fullWidth
-        sx={{ mb: 3, maxWidth: { sm: 480 } }}
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon />
-              </InputAdornment>
-            ),
-          },
-          htmlInput: { maxLength: 100 },
-        }}
-      />
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mb: 3 }}>
+        <TextField
+          label="Пошук за ПІБ"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          fullWidth
+          sx={{ maxWidth: { md: 420 } }}
+          slotProps={{
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            },
+            htmlInput: { maxLength: 100 },
+          }}
+        />
+        <Autocomplete
+          options={subjects}
+          value={subject}
+          onChange={(_e, value) => setSubject(value)}
+          getOptionLabel={(option) => option.name}
+          isOptionEqualToValue={(option, value) => option.id === value.id}
+          loading={subjectsRequest.loading && !subjectsRequest.data}
+          noOptionsText="Дисциплін не знайдено"
+          loadingText="Завантаження…"
+          fullWidth
+          sx={{ maxWidth: { md: 420 } }}
+          renderInput={(inputParams) => <TextField {...inputParams} label="Дисципліна" />}
+        />
+      </Stack>
       <PageState
         loading={loading && !data}
         error={error}
         onRetry={reload}
         empty={teachers.length === 0}
-        emptyText={
-          query ? `Викладачів не знайдено за запитом «${query}»` : 'Викладачів не знайдено'
-        }
+        emptyText={emptyText}
       />
       {teachers.length > 0 && !error && (
         <Grid container spacing={2}>
@@ -69,7 +104,7 @@ export default function TeachersPage() {
               <Card variant="outlined" sx={{ height: '100%' }}>
                 <CardActionArea
                   component={RouterLink}
-                  to={`/teachers/${teacher.id}`}
+                  to={`/teachers/${teacher.id}${subjectId ? `?subjectId=${subjectId}` : ''}`}
                   state={{ teacher }}
                   sx={{ height: '100%' }}
                 >
@@ -80,6 +115,19 @@ export default function TeachersPage() {
                     <Typography color="text.secondary" variant="body2" sx={{ mb: 1 }}>
                       {teacher.department || 'Кафедру не вказано'}
                     </Typography>
+                    {teacher.subjects?.length > 0 && (
+                      <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
+                        {teacher.subjects.map((s) => (
+                          <Chip
+                            key={s.id}
+                            size="small"
+                            label={s.name}
+                            color={s.id === subjectId ? 'primary' : 'default'}
+                            variant={s.id === subjectId ? 'filled' : 'outlined'}
+                          />
+                        ))}
+                      </Stack>
+                    )}
                     <Typography color="primary" variant="body2">
                       Переглянути слоти →
                     </Typography>
