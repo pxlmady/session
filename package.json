@@ -4,10 +4,12 @@
   "private": true,
   "description": "Session — вебсервіс запису студентів на консультації з викладачами (навчальний прототип)",
   "scripts": {
-    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install && npm --prefix e2e install",
     "dev:server": "npm --prefix server run dev",
     "dev:client": "npm --prefix client run dev",
-    "lint": "npm --prefix server run lint && npm --prefix client run lint",
+    "test:server": "npm --prefix server test",
+    "test:e2e": "npm --prefix e2e test",
+    "lint": "npm --prefix server run lint && npm --prefix client run lint && npm --prefix e2e run lint",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

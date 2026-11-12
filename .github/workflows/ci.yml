@@ -1,0 +1,144 @@
+# CI-конвеєр Session (ТЗ, п. 6.3; етап 10): встановлення залежностей, перевірка стилю коду,
+# застосування міграцій до тестової БД, інтеграційні тести API (Jest, Supertest) і наскрізні
+# тести (Playwright). Розгортання не виконується: прототип запускається лише локально.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Тимчасова БД PostgreSQL (сервіс postgres у завданнях) існує лише під час виконання завдання,
+# тому її пароль session_ci не є секретом
+env:
+  NODE_VERSION: 22
+  DATABASE_URL: postgresql://session:session_ci@localhost:5432/session_db?schema=public
+  TEST_DATABASE_URL: postgresql://session:session_ci@localhost:5432/session_db_test?schema=public
+  E2E_DATABASE_URL: postgresql://session:session_ci@localhost:5432/session_db_e2e?schema=public
+  ACADEMIC_PROVIDER: mock
+
+jobs:
+  checks:
+    name: Стиль коду, міграції, тести API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: session
+          POSTGRES_PASSWORD: session_ci
+          POSTGRES_DB: session_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U session -d session_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+            e2e/package-lock.json
+
+      # Секрет JWT генерується для кожного запуску й не зберігається в репозиторії
+      - name: Секрет JWT для тестів
+        run: echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+
+      - name: Встановлення залежностей
+        run: |
+          npm ci
+          npm --prefix server ci
+          npm --prefix client ci
+          npm --prefix e2e ci
+
+      - name: Перевірка форматування (Prettier)
+        run: npm run format:check
+
+      - name: Перевірка стилю коду (ESLint)
+        run: npm run lint
+
+      - name: Перевірка схеми Prisma
+        run: npm --prefix server run prisma:validate
+
+      - name: Застосування міграцій до тестової БД
+        working-directory: server
+        run: |
+          DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate deploy
+          DATABASE_URL="$TEST_DATABASE_URL" npm run db:check-migrations
+
+      - name: Інтеграційні тести API (Jest, Supertest)
+        run: npm --prefix server test
+
+      - name: Збирання клієнтської частини
+        run: npm --prefix client run build
+
+  e2e:
+    name: Наскрізні тести (Playwright)
+    runs-on: ubuntu-latest
+    needs: checks
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: session
+          POSTGRES_PASSWORD: session_ci
+          POSTGRES_DB: session_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U session -d session_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+            client/package-lock.json
+            e2e/package-lock.json
+
+      - name: Секрет JWT для тестів
+        run: echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
+
+      - name: Встановлення залежностей
+        run: |
+          npm --prefix server ci
+          npm --prefix client ci
+          npm --prefix e2e ci
+
+      - name: Встановлення браузера Chromium
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      # База session_db_e2e перестворюється, заповнюється seed і використовується лише тестами
+      - name: Наскрізні тести (Playwright)
+        run: npm --prefix e2e test
+
+      - name: Звіт Playwright
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7

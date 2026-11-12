@@ -5,3 +5,6 @@ package-lock.json
 *.docx
 *.png
 server/prisma/migrations
+playwright-report
+test-results
+.auth

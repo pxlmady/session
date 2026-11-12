@@ -15,6 +15,8 @@ server/              серверна частина (Express, Prisma)
   src/               код API: routes → middleware → controllers → services → Prisma
     academic/        академічна інтеграція: контракт постачальника, MockAcademicProvider і fixtures
   tests/             інтеграційні тести API (Jest, Supertest)
+e2e/                 наскрізні тести (Playwright): tests/ – сценарії, scripts/ – запуск сервера
+.github/workflows/   CI-конвеєр GitHub Actions (ci.yml)
 docker-compose.yml   контейнер PostgreSQL для розробки
 .env.example         змінні для контейнера PostgreSQL
 server/.env.example  змінні серверної частини (DATABASE_URL тощо)
@@ -264,6 +266,37 @@ React Router 7, Material UI 9 з українською локалізацією
 `npm --prefix server test` запускає інтеграційні тести на окремій БД з `TEST_DATABASE_URL`
 (контейнер PostgreSQL має бути запущений; міграції до тестової БД застосовуються автоматично).
 
+### Наскрізні тести (Playwright)
+
+Сценарії (ТЗ, табл. 7.1): реєстрація та вхід; створення слота викладачем; бронювання слота
+студентом; запис на консультацію від академічної заборгованості з перевіркою накладок (TC-25:
+не більше 4 дій від картки заборгованості на «Головній», конфліктні слоти приховано за
+замовчуванням, бронювання слота з накладкою лише після підтвердження) і позначка «Демонстраційні
+дані» на сторінках «Головна», «Розклад», «Успішність», «Дисципліна».
+
+1. Одноразово: `npm --prefix e2e install` і `npm --prefix e2e run install:browsers` (Chromium).
+2. Запустіть контейнер PostgreSQL і виконайте `npm run test:e2e`.
+
+Тести самі запускають сервер (порт 3100) і клієнт (порт 5174), тому сервери розробки на портах
+3000 і 5173 можуть працювати паралельно. Використовується окрема база `<назва з DATABASE_URL>_e2e`
+(або `E2E_DATABASE_URL`): перед кожним запуском її схема очищується, застосовуються міграції та
+`prisma/seed.js` з тестовими обліковими записами (`teacher1/2`, `student1/2@session.local`).
+Робоча й тестова бази не змінюються. Браузер працює в часовому поясі Europe/Kyiv. Звіт про
+невдалий запуск: `npm --prefix e2e run report`.
+
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yml` виконується для кожного push у `main` і pull request:
+
+1. `checks` — встановлення залежностей (`npm ci`), Prettier (`format:check`), ESLint (`lint`),
+   перевірка схеми Prisma, застосування міграцій до тестової БД і `db:check-migrations`,
+   інтеграційні тести API (Jest, Supertest), збирання клієнта;
+2. `e2e` — наскрізні тести Playwright (після успішного `checks`); у разі помилки звіт
+   зберігається як артефакт `playwright-report`.
+
+PostgreSQL 16 запускається як сервіс завдання; `JWT_SECRET` генерується для кожного запуску.
+Розгортання CI не виконує (Dockerfile і Render / Railway – перспектива впровадження).
+
 ## Перевірки працездатності
 
 | Адреса                | Очікувана відповідь                                                  |
@@ -274,7 +307,7 @@ React Router 7, Material UI 9 з українською локалізацією
 
 ## Якість коду
 
-- `npm run lint` — ESLint для сервера й клієнта;
+- `npm run lint` — ESLint для сервера, клієнта й e2e-тестів;
 - `npm run format` / `npm run format:check` — Prettier для всього проєкту.
 
 Файли `.env` до репозиторію не додаються (див. `.gitignore`).

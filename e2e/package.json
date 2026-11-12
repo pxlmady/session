@@ -1,0 +1,25 @@
+{
+  "name": "session-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Наскрізні (e2e) тести Session (Playwright)",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.0",
+    "eslint": "^10.13.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.0.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
