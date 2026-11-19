@@ -5,6 +5,23 @@ import { addDays, isoWeekday, zonedDateString, zonedTimeToUtc } from '../time.js
 // у каталозі fixtures/ і є вигаданими; мережевих запитів до систем університету немає.
 // Розклад у fixtures – тижневий шаблон (час Europe/Kyiv), який розгортається в дати
 // запитаного періоду з перетворенням в UTC.
+//
+// Щоб тижні не були однаковими, шаблон діє в межах циклу з CYCLE_WEEKS тижнів (як
+// «чисельник/знаменник» в університетському розкладі, лише довший). Заняття з полем weeks
+// (номери тижнів циклу, 1…CYCLE_WEEKS) проводяться лише в ці тижні, без поля – щотижня.
+// Номер тижня обчислюється від CYCLE_START, тож для будь-якої дати він однаковий
+// за кожного запиту.
+const DAY_MS = 24 * 60 * 60 * 1000;
+export const CYCLE_WEEKS = 4;
+const CYCLE_START = '2026-11-16'; // понеділок першого тижня циклу
+
+// Номер тижня циклу (1…CYCLE_WEEKS) для календарної дати YYYY-MM-DD
+export function cycleWeek(dateString) {
+  const days =
+    (Date.parse(`${dateString}T00:00:00Z`) - Date.parse(`${CYCLE_START}T00:00:00Z`)) / DAY_MS;
+  const week = Math.floor(days / 7);
+  return (((week % CYCLE_WEEKS) + CYCLE_WEEKS) % CYCLE_WEEKS) + 1;
+}
 
 function readFixture(name) {
   return JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), 'utf8'));
@@ -57,7 +74,11 @@ export class MockAcademicProvider {
     const lastDate = zonedDateString(new Date(to.getTime() - 1));
     for (let date = zonedDateString(from); date <= lastDate; date = addDays(date, 1)) {
       const weekday = isoWeekday(date);
-      for (const item of template.filter((entry) => entry.weekday === weekday)) {
+      const week = cycleWeek(date);
+      const items = template.filter(
+        (entry) => entry.weekday === weekday && (!entry.weeks || entry.weeks.includes(week)),
+      );
+      for (const item of items) {
         const startAt = zonedTimeToUtc(date, item.start);
         const endAt = zonedTimeToUtc(date, item.end);
         if (startAt < to && endAt > from) {

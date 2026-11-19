@@ -297,6 +297,32 @@ describe('TC-17: склад і порядок розкладу', () => {
   });
 });
 
+describe('Розклад демонстраційного постачальника змінюється між тижнями (цикл з 4 тижнів)', () => {
+  const week = async (monday) => {
+    const sunday = new Date(Date.parse(`${monday}T00:00:00Z`) + 6 * 24 * 60 * 60 * 1000)
+      .toISOString()
+      .slice(0, 10);
+    const res = await request(app)
+      .get(`/api/academic/me/schedule?from=${monday}&to=${sunday}`)
+      .set(student.auth)
+      .expect(200);
+    // Ідентифікатор заняття в шаблоні без дати: склад тижня незалежно від календаря
+    return res.body.data.map((entry) => entry.id.slice(0, -11)).sort();
+  };
+
+  test('сусідні тижні відрізняються, а через 4 тижні шаблон повторюється', async () => {
+    const weeks = await Promise.all(
+      ['2026-11-16', '2026-11-23', '2026-11-30', '2026-12-07', '2026-12-14'].map(week),
+    );
+    expect(new Set(weeks.slice(0, 4).map((ids) => ids.join())).size).toBe(4);
+    expect(weeks[4]).toEqual(weeks[0]);
+    // Заняття без поля weeks проводяться щотижня
+    for (const ids of weeks) expect(ids).toContain('G1-MON-1');
+    expect(weeks[1]).toContain('G1-MON-2B');
+    expect(weeks[1]).not.toContain('G1-MON-2');
+  });
+});
+
 describe('TC-18: перевірка накладок у списку слотів (FR-34)', () => {
   test('слот, що перетинається, – CONFLICT із переліком занять; суміжний – OK', async () => {
     const { lesson, conflict, adjacent } = await conflictAndAdjacentSlots();
