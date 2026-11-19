@@ -26,6 +26,8 @@ jobs:
   checks:
     name: Стиль коду, міграції, тести API
     runs-on: ubuntu-latest
+    # Обмеження часу: завислий крок завершується помилкою, а не чекає до 6 год
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16-alpine
@@ -57,7 +59,10 @@ jobs:
       - name: Секрет JWT для тестів
         run: echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
 
+      # postinstall сервера (prisma generate) завантажує рушії Prisma; якщо мережа зависає,
+      # крок перериваємо через 10 хв, і його можна перезапустити
       - name: Встановлення залежностей
+        timeout-minutes: 10
         run: |
           npm ci
           npm --prefix server ci
@@ -88,6 +93,7 @@ jobs:
   e2e:
     name: Наскрізні тести (Playwright)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: checks
     services:
       postgres:
@@ -119,7 +125,10 @@ jobs:
       - name: Секрет JWT для тестів
         run: echo "JWT_SECRET=$(openssl rand -hex 48)" >> "$GITHUB_ENV"
 
+      # postinstall сервера (prisma generate) завантажує рушії Prisma; якщо мережа зависає,
+      # крок перериваємо через 10 хв, і його можна перезапустити
       - name: Встановлення залежностей
+        timeout-minutes: 10
         run: |
           npm --prefix server ci
           npm --prefix client ci
