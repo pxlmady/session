@@ -1,5 +1,6 @@
 import {
   Alert,
+  Box,
   Button,
   Card,
   CardActions,
@@ -12,6 +13,10 @@ import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import { formatDate, formatTimeRange, isFuture } from '../utils/datetime.js';
 import { Location } from './Location.jsx';
 import { StatusChip } from './StatusChip.jsx';
+import { UserAvatar } from './UserAvatar.jsx';
+
+// Колір смужки ліворуч на картці – додаткова ознака статусу поруч із міткою
+const STATUS_ACCENT = { PENDING: 'warning', CONFIRMED: 'success' };
 
 // Дії із записом залежно від статусу, ролі та часу (UX, табл. 5.2)
 // Після завершення підтвердженої консультації викладач може один раз зафіксувати її результат
@@ -45,8 +50,15 @@ export function BookingCard({ booking, role, onAction, busy }) {
   const teacher = slot.teacher;
 
   return (
-    <Card variant="outlined">
-      <CardContent sx={{ pb: actions.length ? 1 : 2 }}>
+    <Card
+      variant="outlined"
+      sx={(theme) => {
+        const accent = STATUS_ACCENT[booking.status];
+        const color = accent ? theme.vars.palette[accent].main : theme.vars.palette.divider;
+        return { boxShadow: `inset 4px 0 0 ${color}` };
+      }}
+    >
+      <CardContent sx={{ pb: actions.length ? 1 : 2.5, pl: 3 }}>
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={1}
@@ -69,16 +81,23 @@ export function BookingCard({ booking, role, onAction, busy }) {
           </Stack>
         </Stack>
         <Stack spacing={0.5}>
-          {role === 'TEACHER' ? (
-            <Field label="Студент">
-              {[student.fullName, student.studentGroup, student.email].filter(Boolean).join(', ')}
-            </Field>
-          ) : (
-            <Field label="Викладач">
-              {teacher.fullName}
-              {teacher.department ? `, ${teacher.department}` : ''}
-            </Field>
-          )}
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', py: 0.5 }}>
+            <UserAvatar user={role === 'TEACHER' ? student : teacher} size={30} />
+            <Box sx={{ minWidth: 0 }}>
+              {role === 'TEACHER' ? (
+                <Field label="Студент">
+                  {[student.fullName, student.studentGroup, student.email]
+                    .filter(Boolean)
+                    .join(', ')}
+                </Field>
+              ) : (
+                <Field label="Викладач">
+                  {teacher.fullName}
+                  {teacher.department ? `, ${teacher.department}` : ''}
+                </Field>
+              )}
+            </Box>
+          </Stack>
           <Field label="Місце">
             <Location value={slot.location} />
           </Field>
@@ -102,7 +121,7 @@ export function BookingCard({ booking, role, onAction, busy }) {
         )}
       </CardContent>
       {actions.length > 0 && (
-        <CardActions sx={{ px: 2, pb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <CardActions sx={{ px: 3, pb: 2.5, flexWrap: 'wrap', gap: 1 }}>
           {actions.includes('complete') && (
             <Button
               variant="contained"

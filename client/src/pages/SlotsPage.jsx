@@ -151,7 +151,7 @@ export default function SlotsPage() {
           </Button>
         }
       />
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         <Tabs value={tab} onChange={(_e, value) => setTab(value)}>
           <Tab value="upcoming" label="Майбутні" />
           <Tab value="past" label="Минулі" />

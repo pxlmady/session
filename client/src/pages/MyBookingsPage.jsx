@@ -94,7 +94,7 @@ export default function MyBookingsPage() {
   return (
     <>
       <PageHeader title="Мої записи" />
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         <Tabs value={period} onChange={(_e, value) => setPeriod(value)}>
           <Tab value="upcoming" label="Майбутні" />
           <Tab value="past" label="Минулі" />

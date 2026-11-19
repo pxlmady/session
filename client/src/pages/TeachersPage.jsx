@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router';
 import {
   Autocomplete,
+  Box,
   Card,
   CardActionArea,
   CardContent,
@@ -16,6 +17,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { subjectsApi, teachersApi } from '../api/index.js';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { PageState } from '../components/PageState.jsx';
+import { UserAvatar } from '../components/UserAvatar.jsx';
 import { useRequest } from '../hooks/useRequest.js';
 
 // Список викладачів із пошуком за ПІБ (FR-13) і фільтром за дисципліною (FR-32).
@@ -109,12 +111,17 @@ export default function TeachersPage() {
                   sx={{ height: '100%' }}
                 >
                   <CardContent>
-                    <Typography variant="h6" component="h2" sx={{ fontSize: '1.1rem' }}>
-                      {teacher.fullName}
-                    </Typography>
-                    <Typography color="text.secondary" variant="body2" sx={{ mb: 1 }}>
-                      {teacher.department || 'Кафедру не вказано'}
-                    </Typography>
+                    <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1.5 }}>
+                      <UserAvatar user={teacher} size={44} />
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="h6" component="h2" sx={{ fontSize: '1.05rem' }}>
+                          {teacher.fullName}
+                        </Typography>
+                        <Typography color="text.secondary" variant="body2">
+                          {teacher.department || 'Кафедру не вказано'}
+                        </Typography>
+                      </Box>
+                    </Stack>
                     {teacher.subjects?.length > 0 && (
                       <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5, mb: 1 }}>
                         {teacher.subjects.map((s) => (
@@ -128,7 +135,7 @@ export default function TeachersPage() {
                         ))}
                       </Stack>
                     )}
-                    <Typography color="primary" variant="body2">
+                    <Typography color="primary" variant="body2" sx={{ fontWeight: 650, mt: 1.5 }}>
                       Переглянути слоти →
                     </Typography>
                   </CardContent>

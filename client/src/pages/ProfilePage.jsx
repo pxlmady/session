@@ -1,6 +1,19 @@
-import { Alert, Box, Button, Card, CardContent, Stack, TextField, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
+} from '@mui/material';
 import { usersApi } from '../api/index.js';
+import { AvatarPattern } from '../components/AvatarPattern.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
+import { UserAvatar } from '../components/UserAvatar.jsx';
 import { useAuth } from '../context/auth-context.js';
 import { useNotify } from '../context/notification-context.js';
 import { useForm } from '../hooks/useForm.js';
@@ -50,22 +63,40 @@ export default function ProfilePage() {
   return (
     <>
       <PageHeader title="Профіль" />
-      <Card variant="outlined" sx={{ maxWidth: 600 }}>
-        <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+      <Card variant="outlined" sx={{ maxWidth: 640, overflow: 'hidden' }}>
+        {/* Шапка профілю: візерунок з аватара-заглушки, далі аватар, ПІБ і роль */}
+        <AvatarPattern user={user} />
+        <CardContent sx={{ p: { xs: 2.5, sm: 4 }, pt: '0 !important' }}>
+          <Stack
+            direction={{ xs: 'column', sm: 'row' }}
+            spacing={2}
+            sx={{ alignItems: 'flex-start', mb: 3 }}
+          >
+            <UserAvatar
+              user={user}
+              size={84}
+              sx={{
+                mt: '-44px',
+                border: 4,
+                borderColor: 'background.paper',
+                boxSizing: 'content-box',
+              }}
+            />
+            <Box sx={{ minWidth: 0, pt: { sm: 1.5 } }}>
+              <Typography variant="h6" component="p" sx={{ wordBreak: 'break-word' }}>
+                {user.fullName}
+              </Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                <Chip size="small" color="primary" label={ROLE_LABELS[user.role]} />
+                <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                  {user.email}
+                </Typography>
+              </Stack>
+            </Box>
+          </Stack>
+          <Divider sx={{ mb: 3 }} />
           <Stack component="form" spacing={2} onSubmit={submit} noValidate>
             {form.formError && <Alert severity="error">{form.formError}</Alert>}
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Email
-              </Typography>
-              <Typography sx={{ wordBreak: 'break-all' }}>{user.email}</Typography>
-            </Box>
-            <Box>
-              <Typography variant="body2" color="text.secondary">
-                Роль
-              </Typography>
-              <Typography>{ROLE_LABELS[user.role]}</Typography>
-            </Box>
             <TextField {...form.field('fullName')} label="ПІБ" required fullWidth />
             {extra && <TextField {...form.field('extra')} label={extra.label} fullWidth />}
             <Box>

@@ -17,10 +17,19 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
+import HourglassEmptyOutlinedIcon from '@mui/icons-material/HourglassEmptyOutlined';
+import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
+import SupervisorAccountOutlinedIcon from '@mui/icons-material/SupervisorAccountOutlined';
+import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
 import { adminApi } from '../api/index.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { PageState } from '../components/PageState.jsx';
+import { IconTile } from '../components/Panel.jsx';
+import { UserAvatar } from '../components/UserAvatar.jsx';
 import { useAuth } from '../context/auth-context.js';
 import { useNotify } from '../context/notification-context.js';
 import { useRequest } from '../hooks/useRequest.js';
@@ -28,15 +37,34 @@ import { DemoChip } from '../components/DemoDataBanner.jsx';
 import { formatDate } from '../utils/datetime.js';
 import { BOOKING_STATUS, ROLE_LABELS } from '../utils/labels.js';
 
-function StatCard({ label, value }) {
+// Іконки й кольори карток показників (колір – додаткова ознака поруч із підписом)
+const STAT_STYLE = {
+  STUDENT: { icon: SchoolOutlinedIcon, tone: 'primary' },
+  TEACHER: { icon: SupervisorAccountOutlinedIcon, tone: 'info' },
+  ADMIN: { icon: AdminPanelSettingsOutlinedIcon, tone: 'secondary' },
+  SLOTS: { icon: ScheduleOutlinedIcon, tone: 'primary' },
+  PENDING: { icon: HourglassEmptyOutlinedIcon, tone: 'warning' },
+  CONFIRMED: { icon: TaskAltOutlinedIcon, tone: 'success' },
+  CANCELLED: { icon: EventBusyOutlinedIcon, tone: null },
+};
+
+function StatCard({ label, value, kind }) {
+  const style = STAT_STYLE[kind];
   return (
     <Card variant="outlined" sx={{ height: '100%' }}>
       <CardContent>
-        <Typography variant="h4" component="p">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'flex-start' }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ fontWeight: 600, flexGrow: 1, minWidth: 0 }}
+          >
+            {label}
+          </Typography>
+          {style && <IconTile icon={style.icon} tone={style.tone} />}
+        </Stack>
+        <Typography variant="h4" component="p" sx={{ mt: 1, fontVariantNumeric: 'tabular-nums' }}>
           {value ?? 0}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {label}
         </Typography>
       </CardContent>
     </Card>
@@ -49,22 +77,23 @@ function Stats() {
   if (!data) return state;
 
   const cards = [
-    ['Студентів', data.usersByRole?.STUDENT],
-    ['Викладачів', data.usersByRole?.TEACHER],
-    ['Адміністраторів', data.usersByRole?.ADMIN],
-    ['Слотів', data.slotsTotal],
+    ['Студентів', data.usersByRole?.STUDENT, 'STUDENT'],
+    ['Викладачів', data.usersByRole?.TEACHER, 'TEACHER'],
+    ['Адміністраторів', data.usersByRole?.ADMIN, 'ADMIN'],
+    ['Слотів', data.slotsTotal, 'SLOTS'],
     ...Object.entries(BOOKING_STATUS).map(([status, meta]) => [
       meta.label,
       data.bookingsByStatus?.[status],
+      status,
     ]),
   ];
 
   return (
     <Stack spacing={2}>
       <Grid container spacing={2}>
-        {cards.map(([label, value]) => (
+        {cards.map(([label, value, kind]) => (
           <Grid key={label} size={{ xs: 6, sm: 4, md: 3 }}>
-            <StatCard label={label} value={value} />
+            <StatCard label={label} value={value} kind={kind} />
           </Grid>
         ))}
       </Grid>
@@ -235,7 +264,12 @@ function Users() {
               <TableBody>
                 {users.map((u) => (
                   <TableRow key={u.id}>
-                    <TableCell>{u.fullName}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+                        <UserAvatar user={u} size={30} />
+                        <span>{u.fullName}</span>
+                      </Stack>
+                    </TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>{u.department || u.studentGroup || '—'}</TableCell>
                     <TableCell>{roleSelect(u)}</TableCell>

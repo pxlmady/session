@@ -1,23 +1,24 @@
 import { Link as RouterLink } from 'react-router';
 import {
+  Box,
   Button,
   Card,
   CardActions,
   CardContent,
-  Chip,
   Link,
   Stack,
   Typography,
 } from '@mui/material';
 import { formatDate, formatDateKey } from '../utils/datetime.js';
 import { DEBT_STATUS } from '../utils/labels.js';
+import { StatusChip } from './StatusChip.jsx';
 
 // Картка академічної заборгованості (FR-30, FR-33): дисципліна, вид і опис, крайній строк,
 // статус і перехід до запису на консультацію (→ сторінка дисципліни з debtId).
 // from – сторінка, з якої відкрито дисципліну (для посилання «←» на сторінці дисципліни);
 // hideActions – без переходів (на самій сторінці дисципліни).
 export function DebtCard({ debt, from, showSubjectLink = false, hideActions = false }) {
-  const status = DEBT_STATUS[debt.status] ?? DEBT_STATUS.open;
+  const status = Object.hasOwn(DEBT_STATUS, debt.status ?? '') ? debt.status : 'open';
   const subjectId = debt.subject?.id;
   const subjectUrl = subjectId ? `/subjects/${subjectId}` : null;
 
@@ -29,10 +30,16 @@ export function DebtCard({ debt, from, showSubjectLink = false, hideActions = fa
           spacing={1}
           sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5 }}
         >
-          <Typography variant="h6" component="h3" sx={{ fontSize: '1.05rem' }}>
+          <Typography
+            variant="h6"
+            component="h3"
+            sx={{ fontSize: '1.05rem', minWidth: 0, overflowWrap: 'anywhere' }}
+          >
             {debt.subject?.name ?? 'Дисципліна'}
           </Typography>
-          <Chip size="small" label={status.label} color={status.color} />
+          <Box sx={{ flexShrink: 0 }}>
+            <StatusChip entity="debt" status={status} />
+          </Box>
         </Stack>
         <Typography variant="body2">{debt.debtType}</Typography>
         {debt.description && (

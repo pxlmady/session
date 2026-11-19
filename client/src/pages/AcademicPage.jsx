@@ -162,7 +162,7 @@ export default function AcademicPage() {
     <>
       <PageHeader title="Успішність" />
       <DemoDataBanner />
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+      <Box sx={{ mb: 3 }}>
         <Tabs
           value={tab}
           onChange={(_e, value) => setParams({ tab: value }, { replace: true })}

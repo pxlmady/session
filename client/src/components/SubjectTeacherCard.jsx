@@ -1,9 +1,10 @@
 import { Link as RouterLink } from 'react-router';
-import { Button, Card, CardActions, CardContent, Typography } from '@mui/material';
+import { Box, Button, Card, CardActions, CardContent, Stack, Typography } from '@mui/material';
 import { teachersApi } from '../api/index.js';
 import { useRequest } from '../hooks/useRequest.js';
 import { nearestSlot } from '../utils/academic.js';
 import { formatDateTimeRange } from '../utils/datetime.js';
+import { UserAvatar } from './UserAvatar.jsx';
 
 // Викладач дисципліни з найближчим вільним слотом і переходом до вибору часу (FR-32, FR-33).
 // context – параметри для сторінки слотів: subjectId і, за наявності, debtId або recordId.
@@ -30,15 +31,20 @@ export function SubjectTeacherCard({ teacher, context }) {
   return (
     <Card variant="outlined" sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <CardContent sx={{ flexGrow: 1 }}>
-        <Typography variant="h6" component="h3" sx={{ fontSize: '1.05rem' }}>
-          {teacher.fullName}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-          {teacher.department || 'Кафедру не вказано'}
-        </Typography>
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', mb: 1.5 }}>
+          <UserAvatar user={teacher} size={40} />
+          <Box sx={{ minWidth: 0 }}>
+            <Typography variant="h6" component="h3" sx={{ fontSize: '1.05rem' }}>
+              {teacher.fullName}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {teacher.department || 'Кафедру не вказано'}
+            </Typography>
+          </Box>
+        </Stack>
         <Typography variant="body2">{slotText}</Typography>
       </CardContent>
-      <CardActions sx={{ px: 2, pb: 2 }}>
+      <CardActions sx={{ px: 2.5, pb: 2.5 }}>
         <Button
           variant="contained"
           size="small"

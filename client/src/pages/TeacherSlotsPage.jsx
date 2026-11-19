@@ -29,6 +29,7 @@ import { DemoChip } from '../components/DemoDataBanner.jsx';
 import { Location } from '../components/Location.jsx';
 import { PageState } from '../components/PageState.jsx';
 import { ScheduleCheckChip } from '../components/ScheduleCheckChip.jsx';
+import { UserAvatar } from '../components/UserAvatar.jsx';
 import { useAuth } from '../context/auth-context.js';
 import { useNotify } from '../context/notification-context.js';
 import { usePageTitle } from '../hooks/usePageTitle.js';
@@ -156,18 +157,21 @@ export default function TeacherSlotsPage() {
 
       {teacher && (
         <Stack sx={{ mb: 3 }} spacing={1}>
-          <div>
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}
-            >
-              {teacher.fullName}
-            </Typography>
-            <Typography color="text.secondary">
-              {teacher.department || 'Кафедру не вказано'}
-            </Typography>
-          </div>
+          <Stack direction="row" spacing={2} sx={{ alignItems: 'center' }}>
+            <UserAvatar user={teacher} size={64} sx={{ display: { xs: 'none', sm: 'flex' } }} />
+            <div>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{ fontSize: { xs: '1.75rem', sm: '2.25rem' } }}
+              >
+                {teacher.fullName}
+              </Typography>
+              <Typography color="text.secondary">
+                {teacher.department || 'Кафедру не вказано'}
+              </Typography>
+            </div>
+          </Stack>
           {teacher.subjects?.length > 0 && (
             <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.5 }}>
               {teacher.subjects.map((s) => (

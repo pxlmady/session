@@ -56,7 +56,7 @@ export function PageState({
   }
   if (empty) {
     return (
-      <Stack spacing={2} sx={{ alignItems: 'center', py: 6, textAlign: 'center' }}>
+      <Stack spacing={2} sx={{ alignItems: 'center', py: 4, textAlign: 'center' }}>
         <Box
           sx={{
             width: 64,

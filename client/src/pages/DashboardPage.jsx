@@ -1,6 +1,9 @@
 import { Link as RouterLink } from 'react-router';
 import { Button, Card, CardContent, Grid, Link, Stack, Typography } from '@mui/material';
+import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
+import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import { academicApi, bookingsApi } from '../api/index.js';
 import { AcademicSection } from '../components/AcademicSection.jsx';
@@ -8,8 +11,11 @@ import { DebtCard } from '../components/DebtCard.jsx';
 import { DemoDataBanner } from '../components/DemoDataBanner.jsx';
 import { PageHeader } from '../components/PageHeader.jsx';
 import { PageState } from '../components/PageState.jsx';
+import { Panel } from '../components/Panel.jsx';
 import { ClassCard } from '../components/ScheduleView.jsx';
 import { StatusChip } from '../components/StatusChip.jsx';
+import { UserAvatar } from '../components/UserAvatar.jsx';
+import { useAuth } from '../context/auth-context.js';
 import { useRequest } from '../hooks/useRequest.js';
 import { addDays, formatDate, formatDateTimeRange, toDateKey } from '../utils/datetime.js';
 import { ACTIVE_BOOKING_STATUSES } from '../utils/labels.js';
@@ -17,24 +23,15 @@ import { ACTIVE_BOOKING_STATUSES } from '../utils/labels.js';
 // Скільки днів уперед шукати наступний навчальний день
 const LOOKAHEAD_DAYS = 14;
 
-function SectionTitle({ children, link }) {
-  return (
-    <Stack
-      direction="row"
-      spacing={2}
-      sx={{ justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5, flexWrap: 'wrap' }}
-    >
-      <Typography variant="h6" component="h2">
-        {children}
-      </Typography>
-      {link}
-    </Stack>
-  );
-}
-
 function MoreLink({ to, children }) {
   return (
-    <Link component={RouterLink} to={to} underline="hover" variant="body2">
+    <Link
+      component={RouterLink}
+      to={to}
+      underline="hover"
+      variant="body2"
+      sx={{ whiteSpace: 'nowrap' }}
+    >
       {children}
     </Link>
   );
@@ -66,12 +63,15 @@ function TodayClasses() {
   const day = request.data ? pickClassDay(request.data.data) : null;
 
   return (
-    <section>
-      <SectionTitle link={<MoreLink to="/schedule">Увесь розклад →</MoreLink>}>
-        {day
+    <Panel
+      icon={CalendarMonthOutlinedIcon}
+      title={
+        day
           ? `${day.isToday ? 'Заняття сьогодні' : 'Заняття'} · ${formatDate(day.date)}`
-          : 'Заняття сьогодні'}
-      </SectionTitle>
+          : 'Заняття сьогодні'
+      }
+      action={<MoreLink to="/schedule">Увесь розклад →</MoreLink>}
+    >
       <AcademicSection
         request={request}
         compact
@@ -87,7 +87,7 @@ function TodayClasses() {
           </Stack>
         )}
       </AcademicSection>
-    </section>
+    </Panel>
   );
 }
 
@@ -103,10 +103,12 @@ function UpcomingConsultations() {
     .slice(0, 3);
 
   return (
-    <section>
-      <SectionTitle link={<MoreLink to="/my-bookings">Мої записи →</MoreLink>}>
-        Найближчі консультації
-      </SectionTitle>
+    <Panel
+      icon={ForumOutlinedIcon}
+      tone="secondary"
+      title="Найближчі консультації"
+      action={<MoreLink to="/my-bookings">Мої записи →</MoreLink>}
+    >
       <PageState
         loading={loading && !data}
         error={error}
@@ -138,18 +140,23 @@ function UpcomingConsultations() {
                     <StatusChip entity="booking" status={booking.status} />
                   </div>
                 </Stack>
-                <Typography variant="body2">{booking.slot.teacher.fullName}</Typography>
-                {booking.subject && (
-                  <Typography variant="body2" color="text.secondary">
-                    {booking.subject.name}
-                  </Typography>
-                )}
+                <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', mt: 1 }}>
+                  <UserAvatar user={booking.slot.teacher} size={28} />
+                  <div>
+                    <Typography variant="body2">{booking.slot.teacher.fullName}</Typography>
+                    {booking.subject && (
+                      <Typography variant="body2" color="text.secondary">
+                        {booking.subject.name}
+                      </Typography>
+                    )}
+                  </div>
+                </Stack>
               </CardContent>
             </Card>
           ))}
         </Stack>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -158,10 +165,11 @@ function OpenDebts() {
   const debts = request.data?.data ?? [];
 
   return (
-    <section>
-      <SectionTitle>
-        Відкриті академічні заборгованості{request.data ? ` (${debts.length})` : ''}
-      </SectionTitle>
+    <Panel
+      icon={AssignmentLateOutlinedIcon}
+      tone="warning"
+      title={`Відкриті академічні заборгованості${request.data ? ` (${debts.length})` : ''}`}
+    >
       <AcademicSection
         request={request}
         isEmpty={() => debts.length === 0}
@@ -176,25 +184,32 @@ function OpenDebts() {
           </Stack>
         )}
       </AcademicSection>
-    </section>
+    </Panel>
   );
 }
 
 // Головна сторінка студента (FR-38): заняття, найближчі консультації, відкриті заборгованості.
 // Кожен блок завантажується окремо, тому збій академічного джерела не приховує консультації.
 export default function DashboardPage() {
+  const { user } = useAuth();
+  // ПІБ: «Прізвище Ім'я По батькові» – у привітанні ім'я (або перше слово, якщо слово одне)
+  const words = user.fullName.trim().split(/\s+/);
+  const name = words[1] ?? words[0];
   return (
     <>
-      <PageHeader title="Головна" />
+      <PageHeader
+        title="Головна"
+        subtitle={`Вітаємо, ${name}! Заняття, консультації та заборгованості – на одній сторінці.`}
+      />
       <DemoDataBanner />
       <Grid container spacing={3}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Stack spacing={4}>
+        <Grid size={{ xs: 12, lg: 6 }}>
+          <Stack spacing={3}>
             <TodayClasses />
             <UpcomingConsultations />
           </Stack>
         </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
+        <Grid size={{ xs: 12, lg: 6 }}>
           <OpenDebts />
         </Grid>
       </Grid>
