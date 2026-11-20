@@ -17,7 +17,15 @@ export function StatusChip({ entity, status }) {
         <Box
           component="span"
           aria-hidden="true"
-          sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'currentColor', flexShrink: 0 }}
+          sx={(theme) => ({
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            bgcolor: 'currentColor',
+            flexShrink: 0,
+            // У темній схемі точка статусу ледь світиться
+            boxShadow: `${theme.vars.palette.glow.dot} currentColor`,
+          })}
         />
       }
       sx={{ '& .MuiChip-icon': { color: 'inherit', ml: 1, mr: -0.25 } }}

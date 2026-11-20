@@ -48,12 +48,6 @@ const MENU_ICONS = {
 // Відступ «плаваючої» бічної панелі від країв вікна на широких екранах
 const SIDEBAR_GAP = 12;
 
-// Активний пункт меню: фірмовий градієнт ірису зі світінням (панель темна в обох схемах,
-// тому кольори сталі й не залежать від схеми)
-const ACTIVE_ITEM_BG = 'linear-gradient(135deg, #6C69F2 0%, #3E3BC8 100%)';
-const ACTIVE_ITEM_SHADOW =
-  '0 8px 20px rgba(62 59 200 / 0.45), inset 0 1px 0 rgba(255 255 255 / 0.2)';
-
 // Вміст бічної панелі: знак сервісу, меню ролі, перемикач теми, користувач і кнопка «Вийти».
 // floating – окрема заокруглена панель з відступами (широкі екрани), інакше – на всю висоту.
 function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating = false }) {
@@ -64,18 +58,16 @@ function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating 
         overflowY: 'auto',
         bgcolor: theme.vars.palette.sidebar.bg,
         border: floating ? `1px solid ${theme.vars.palette.sidebar.border}` : 0,
-        borderRadius: floating ? '20px' : 0,
-        boxShadow: floating ? '0 12px 32px rgba(21 24 58 / 0.18)' : 'none',
+        borderRadius: floating ? '18px' : 0,
+        boxShadow: floating ? theme.vars.palette.glow.card : 'none',
         color: theme.vars.palette.sidebar.text,
-        // Ледь помітне світіння акцентного кольору у верхній частині панелі
-        backgroundImage: `radial-gradient(120% 40% at 0% 0%, rgba(${theme.vars.palette.primary.mainChannel} / 0.22), transparent 70%)`,
       })}
     >
       <Box
         component={RouterLink}
         to={roleHome(user)}
         onClick={onNavigate}
-        sx={{ px: 2.5, pt: 2.5, pb: 2, color: 'inherit', textDecoration: 'none' }}
+        sx={{ px: '22px', pt: 2.5, pb: 2, color: 'inherit', textDecoration: 'none' }}
       >
         <BrandLogo />
       </Box>
@@ -85,8 +77,9 @@ function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating 
         sx={(theme) => ({
           px: 3,
           pt: 1,
-          color: theme.vars.palette.sidebar.muted,
-          fontSize: '0.68rem',
+          color: theme.vars.palette.sidebar.caption,
+          fontSize: '0.6875rem',
+          fontWeight: 400,
         })}
       >
         Меню
@@ -103,29 +96,20 @@ function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating 
               aria-current={active ? 'page' : undefined}
               onClick={onNavigate}
               sx={(theme) => ({
-                position: 'relative',
-                borderRadius: '12px',
-                mb: 0.5,
-                py: 1,
-                color: active ? '#FFFFFF' : theme.vars.palette.sidebar.muted,
-                backgroundImage: active ? ACTIVE_ITEM_BG : 'none',
-                boxShadow: active ? ACTIVE_ITEM_SHADOW : 'none',
+                borderRadius: '10px',
+                mb: 0.25,
+                py: 0.875,
+                color: active ? theme.vars.palette.sidebar.text : theme.vars.palette.sidebar.muted,
+                bgcolor: active ? theme.vars.palette.sidebar.active : 'transparent',
+                boxShadow: active ? theme.vars.palette.sidebar.activeShadow : 'none',
                 '&:hover': {
-                  bgcolor: active ? 'transparent' : theme.vars.palette.sidebar.hover,
-                  color: active ? '#FFFFFF' : theme.vars.palette.sidebar.text,
+                  bgcolor: active
+                    ? theme.vars.palette.sidebar.active
+                    : theme.vars.palette.sidebar.hover,
+                  color: theme.vars.palette.sidebar.text,
                 },
-                // Позначка активного пункту – смужка кольору календули ліворуч
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: -12,
-                  top: 10,
-                  bottom: 10,
-                  width: 4,
-                  borderRadius: '0 4px 4px 0',
-                  bgcolor: 'secondary.main',
-                  opacity: active ? 1 : 0,
-                  transition: 'opacity .15s ease',
+                '& .MuiListItemIcon-root': {
+                  color: active ? theme.vars.palette.primary.main : 'inherit',
                 },
               })}
             >
@@ -135,9 +119,23 @@ function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating 
               <ListItemText
                 primary={item.label}
                 slotProps={{
-                  primary: { sx: { fontWeight: active ? 650 : 500, fontSize: '0.92rem' } },
+                  primary: { sx: { fontWeight: active ? 600 : 500, fontSize: '0.875rem' } },
                 }}
               />
+              {/* Позначка активного пункту – точка акцентного кольору (у темній схемі світиться) */}
+              {active && (
+                <Box
+                  aria-hidden="true"
+                  sx={(theme) => ({
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    flexShrink: 0,
+                    bgcolor: 'primary.main',
+                    boxShadow: `${theme.vars.palette.glow.dot} ${theme.vars.palette.primary.main}`,
+                  })}
+                />
+              )}
             </ListItemButton>
           );
         })}
@@ -147,15 +145,15 @@ function SidebarContent({ user, items, isActive, onNavigate, onLogout, floating 
         <Box
           sx={(theme) => ({
             p: 1.5,
-            borderRadius: '16px',
-            bgcolor: theme.vars.palette.sidebar.hover,
+            borderRadius: '14px',
+            bgcolor: theme.vars.palette.surface.subtle,
             border: `1px solid ${theme.vars.palette.sidebar.border}`,
           })}
         >
           <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
             <UserAvatar user={user} size={38} />
             <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-              <Typography variant="body2" noWrap sx={{ fontWeight: 650 }} title={user.fullName}>
+              <Typography variant="body2" noWrap sx={{ fontWeight: 600 }} title={user.fullName}>
                 {user.fullName}
               </Typography>
               <Typography
@@ -208,15 +206,7 @@ export function AppLayout() {
   const sidebarProps = { user, items, isActive };
 
   return (
-    <Box
-      sx={(theme) => ({
-        minHeight: '100vh',
-        bgcolor: 'background.default',
-        // М'яке світіння основного кольору у верхній частині сторінки
-        backgroundImage: `radial-gradient(900px 420px at 85% -120px, rgba(${theme.vars.palette.primary.mainChannel} / 0.09), transparent 70%)`,
-        backgroundRepeat: 'no-repeat',
-      })}
-    >
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Широкі екрани: постійна «плаваюча» бічна панель */}
       <Box
         component="aside"

@@ -1,63 +1,45 @@
-import { useId } from 'react';
 import { Box } from '@mui/material';
-import { avatarHue, initialsOf } from '../utils/avatar.js';
 
-// Тло шапки профілю: аватар-заглушка користувача, що повторюється рядами під невеликим
-// нахилом (сусідні ряди зміщені). Вбудований SVG-візерунок – без зображень і запитів.
-// Кольори – ті самі, що в UserAvatar, з урахуванням світлої й темної схем.
-const TILE = 80;
+// Тло шапки профілю: приглушена смуга з тонкими концентричними колами акцентного кольору
+// (той самий мотив, що й на сторінці входу). Вбудований SVG – без зображень і запитів.
+// Проп user лишається для сумісності з попереднім візерунком з ініціалів.
+const RINGS = [
+  [200, 0.14],
+  [150, 0.2],
+  [100, 0.28],
+  [50, 0.38],
+];
 
-export function AvatarPattern({ user, height = 88 }) {
-  const id = `avatar-pattern-${useId().replace(/:/g, '')}`;
-  const hue = avatarHue(user);
-  const initials = initialsOf(user?.fullName);
-  const circle = (cx, cy) => (
-    <g key={`${cx}-${cy}`}>
-      <circle cx={cx} cy={cy} r={17} />
-      <text x={cx} y={cy} dy="0.35em" textAnchor="middle">
-        {initials}
-      </text>
-    </g>
-  );
-
+export function AvatarPattern({ height = 112 }) {
   return (
     <Box
       aria-hidden="true"
       sx={(theme) => ({
+        position: 'relative',
         height,
         overflow: 'hidden',
-        bgcolor: `hsl(${hue} 70% 96%)`,
+        bgcolor: theme.vars.palette.surface.subtle,
         borderBottom: `1px solid ${theme.vars.palette.divider}`,
-        '& circle': { fill: `hsl(${hue} 80% 86%)` },
-        '& text': {
-          fill: `hsl(${hue} 50% 34%)`,
-          fontFamily: theme.typography.fontFamily,
-          fontSize: 13,
-          fontWeight: 700,
-        },
-        ...theme.applyStyles('dark', {
-          bgcolor: `hsl(${hue} 35% 14%)`,
-          borderBottom: 0,
-          '& circle': { fill: `hsl(${hue} 40% 24%)` },
-          '& text': { fill: `hsl(${hue} 70% 78%)` },
-        }),
+        color: theme.vars.palette.primary.main,
       })}
     >
-      <svg width="100%" height="100%">
-        <defs>
-          <pattern
-            id={id}
-            width={TILE}
-            height={TILE}
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-18)"
-          >
-            {circle(TILE / 4, TILE / 4)}
-            {circle((TILE * 3) / 4, (TILE * 3) / 4)}
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill={`url(#${id})`} />
-      </svg>
+      <Box
+        component="svg"
+        viewBox="0 0 420 420"
+        sx={{ position: 'absolute', right: -90, top: -150, width: 420, height: 420 }}
+      >
+        {RINGS.map(([r, opacity]) => (
+          <circle
+            key={r}
+            cx="210"
+            cy="210"
+            r={r}
+            fill="none"
+            stroke="currentColor"
+            strokeOpacity={opacity}
+          />
+        ))}
+      </Box>
     </Box>
   );
 }

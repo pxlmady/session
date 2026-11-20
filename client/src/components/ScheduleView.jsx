@@ -15,6 +15,7 @@ import {
   Typography,
 } from '@mui/material';
 import { formatDate, formatTime, formatTimeRange, toDateKey } from '../utils/datetime.js';
+import { tint } from '../theme.js';
 import { subjectSx } from '../utils/subjectColor.js';
 import { Location } from './Location.jsx';
 import { StatusChip } from './StatusChip.jsx';
@@ -54,7 +55,7 @@ function ClassBody({ entry, compact }) {
         </Typography>
       )}
       {entry.teacherName && (
-        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+        <Typography variant="body2" color="text.secondary">
           {entry.teacherName}
         </Typography>
       )}
@@ -65,7 +66,14 @@ function ClassBody({ entry, compact }) {
 // Заняття за розкладом карткою: час, дисципліна, вид заняття, аудиторія, викладач
 export function ClassCard({ entry }) {
   return (
-    <Paper variant="outlined" sx={[{ p: 1.5 }, subjectSx(entry.subject)]}>
+    <Paper
+      variant="outlined"
+      sx={[
+        { p: 1.5 },
+        // Крапка – посередині рядка з назвою: 12 px поля + рядок часу 20 px + пів рядка назви 12 px
+        subjectSx(entry.subject, { dotTop: 40.5 }),
+      ]}
+    >
       <Typography variant="body2" sx={{ fontWeight: 600 }}>
         {formatTimeRange(entry.startAt, entry.endAt)}
       </Typography>
@@ -86,11 +94,11 @@ function Consultation({ booking, showTime }) {
         width: '100%',
         p: 1,
         textAlign: 'left',
-        borderRadius: 1,
-        border: '2px dashed',
-        borderColor: 'primary.main',
-        bgcolor: 'background.paper',
-        '&:hover': { bgcolor: 'action.hover' },
+        borderRadius: '10px',
+        border: '1px dashed',
+        borderColor: (theme) => tint(theme, 'secondary', 0.4),
+        bgcolor: 'transparent',
+        '&:hover': { bgcolor: 'action.hover', borderColor: 'primary.main' },
       }}
     >
       {showTime && (
@@ -105,7 +113,7 @@ function Consultation({ booking, showTime }) {
         {booking.subject?.name ?? slot.teacher.fullName}
       </Typography>
       {booking.subject && (
-        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+        <Typography variant="body2" color="text.secondary">
           {slot.teacher.fullName}
         </Typography>
       )}
@@ -183,11 +191,36 @@ export function ScheduleWeek({ weekStart, entries, bookings = [] }) {
                 key={day.key}
                 align="center"
                 aria-current={day.key === todayKey ? 'date' : undefined}
-                sx={{ bgcolor: day.key === todayKey ? 'action.selected' : undefined }}
+                sx={(theme) =>
+                  day.key === todayKey
+                    ? {
+                        bgcolor: `${tint(theme, 'primary', 0.06)} !important`,
+                        boxShadow: theme.vars.palette.glow.today,
+                      }
+                    : {}
+                }
               >
                 {formatDate(day.date)}
                 {day.key === todayKey && (
-                  <Chip size="small" color="primary" label="Сьогодні" sx={{ ml: 1 }} />
+                  <Chip
+                    size="small"
+                    color="primary"
+                    label="Сьогодні"
+                    icon={
+                      <Box
+                        component="span"
+                        aria-hidden="true"
+                        sx={(theme) => ({
+                          width: 5,
+                          height: 5,
+                          borderRadius: '50%',
+                          bgcolor: 'currentColor',
+                          boxShadow: `${theme.vars.palette.glow.dot} currentColor`,
+                        })}
+                      />
+                    }
+                    sx={{ ml: 1, '& .MuiChip-icon': { ml: 1, mr: -0.25 } }}
+                  />
                 )}
               </TableCell>
             ))}
@@ -196,7 +229,11 @@ export function ScheduleWeek({ weekStart, entries, bookings = [] }) {
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row}>
-              <TableCell component="th" scope="row" sx={{ fontWeight: 600, verticalAlign: 'top' }}>
+              <TableCell
+                component="th"
+                scope="row"
+                sx={{ fontWeight: 600, verticalAlign: 'top', fontVariantNumeric: 'tabular-nums' }}
+              >
                 {row}
               </TableCell>
               {days.map((day) => {
@@ -211,16 +248,14 @@ export function ScheduleWeek({ weekStart, entries, bookings = [] }) {
                       verticalAlign: 'top',
                       borderLeft: 1,
                       borderColor: 'divider',
-                      bgcolor: day.key === todayKey ? 'action.hover' : undefined,
+                      bgcolor: (theme) =>
+                        day.key === todayKey ? tint(theme, 'primary', 0.04) : undefined,
                     }}
                   >
                     <Stack spacing={0.5} sx={{ height: '100%' }}>
                       {cell.map((item) =>
                         item.entry ? (
-                          <Box
-                            key={item.key}
-                            sx={[{ p: 1, borderRadius: 1 }, subjectSx(item.entry.subject)]}
-                          >
+                          <Box key={item.key} sx={[{ p: 1 }, subjectSx(item.entry.subject)]}>
                             <ClassBody entry={item.entry} compact />
                           </Box>
                         ) : (

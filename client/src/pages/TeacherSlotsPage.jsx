@@ -163,7 +163,7 @@ export default function TeacherSlotsPage() {
               <Typography
                 variant="h4"
                 component="h1"
-                sx={{ fontSize: { xs: '1.75rem', sm: '2.25rem' } }}
+                sx={{ fontSize: { xs: '1.625rem', sm: '1.875rem' } }}
               >
                 {teacher.fullName}
               </Typography>

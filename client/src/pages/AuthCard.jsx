@@ -1,16 +1,51 @@
 import { Box, Card, CardContent, Stack, Typography } from '@mui/material';
-import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
-import NotificationsActiveOutlinedIcon from '@mui/icons-material/NotificationsActiveOutlined';
-import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import { BrandLogo } from '../components/BrandMark.jsx';
 import { ThemeModeToggle } from '../components/ThemeModeToggle.jsx';
 import { usePageTitle } from '../hooks/usePageTitle.js';
 
 const FEATURES = [
-  { Icon: EventAvailableOutlinedIcon, text: 'Вільний час викладачів в одному місці' },
-  { Icon: SchoolOutlinedIcon, text: 'Розклад, оцінки й заборгованості поруч із записом' },
-  { Icon: NotificationsActiveOutlinedIcon, text: 'Статус запису й нагадування про консультацію' },
+  'Вільний час викладачів в одному місці',
+  'Розклад, оцінки й заборгованості поруч із записом',
+  'Статус запису й нагадування про консультацію',
 ];
+
+// Декоративні концентричні кола в куті панелі сервісу
+function Rings() {
+  return (
+    <Box
+      component="svg"
+      viewBox="0 0 620 620"
+      aria-hidden="true"
+      sx={(theme) => ({
+        position: 'absolute',
+        right: -250,
+        bottom: -190,
+        width: 620,
+        height: 620,
+        color: theme.vars.palette.hero.accent,
+        pointerEvents: 'none',
+      })}
+    >
+      {[
+        [300, 0.1],
+        [220, 0.14],
+        [140, 0.22],
+        [60, 0.35],
+      ].map(([r, opacity]) => (
+        <circle
+          key={r}
+          cx="310"
+          cy="310"
+          r={r}
+          fill="none"
+          stroke="currentColor"
+          strokeOpacity={opacity}
+        />
+      ))}
+      <circle cx="310" cy="250" r="4" fill="currentColor" />
+    </Box>
+  );
+}
 
 // Інформаційна панель ліворуч від форми (лише на широких екранах)
 function BrandPanel() {
@@ -18,53 +53,63 @@ function BrandPanel() {
     <Stack
       sx={(theme) => ({
         display: { xs: 'none', md: 'flex' },
+        position: 'relative',
+        overflow: 'hidden',
         flex: '0 0 44%',
         maxWidth: 560,
         p: 6,
         justifyContent: 'space-between',
-        color: theme.vars.palette.sidebar.text,
-        bgcolor: theme.vars.palette.sidebar.bg,
-        backgroundImage: [
-          `radial-gradient(80% 60% at 0% 0%, rgba(${theme.vars.palette.primary.mainChannel} / 0.45), transparent 70%)`,
-          `radial-gradient(60% 50% at 100% 100%, rgba(${theme.vars.palette.secondary.mainChannel} / 0.1), transparent 70%)`,
-          // Тонка «зошитова» сітка
-          'linear-gradient(rgba(255 255 255 / 0.035) 1px, transparent 1px)',
-          'linear-gradient(90deg, rgba(255 255 255 / 0.035) 1px, transparent 1px)',
-        ].join(', '),
-        backgroundSize: 'auto, auto, 28px 28px, 28px 28px',
+        color: theme.vars.palette.hero.text,
+        bgcolor: theme.vars.palette.hero.bg,
       })}
     >
-      <BrandLogo size={40} />
-      <Box>
+      <Rings />
+      <Box sx={{ position: 'relative' }}>
+        <BrandLogo size={32} inverse />
+      </Box>
+      <Box sx={{ position: 'relative' }}>
         <Typography
           component="p"
-          sx={{ fontSize: '2.25rem', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.15 }}
+          sx={{
+            fontSize: '2.375rem',
+            fontWeight: 600,
+            letterSpacing: '-0.025em',
+            lineHeight: 1.15,
+          }}
         >
           Консультація з викладачем – у кілька натискань
         </Typography>
-        <Stack spacing={1.75} sx={{ mt: 4 }}>
-          {FEATURES.map(({ Icon, text }) => (
-            <Stack key={text} direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+        <Stack component="ul" spacing={1.75} sx={{ mt: 3.5, mb: 0, p: 0, listStyle: 'none' }}>
+          {FEATURES.map((text) => (
+            <Stack
+              component="li"
+              key={text}
+              direction="row"
+              spacing={1.5}
+              sx={{ alignItems: 'center' }}
+            >
               <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: '10px',
-                  display: 'grid',
-                  placeItems: 'center',
-                  bgcolor: 'rgba(255 255 255 / 0.08)',
-                  color: 'secondary.light',
+                aria-hidden="true"
+                sx={(theme) => ({
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
                   flexShrink: 0,
-                }}
-              >
-                <Icon fontSize="small" />
-              </Box>
-              <Typography sx={{ opacity: 0.88 }}>{text}</Typography>
+                  bgcolor: theme.vars.palette.hero.accent,
+                  boxShadow: '0 0 8px 1px rgba(136 192 208 / 0.7)',
+                })}
+              />
+              <Typography sx={(theme) => ({ color: theme.vars.palette.hero.muted })}>
+                {text}
+              </Typography>
             </Stack>
           ))}
         </Stack>
       </Box>
-      <Typography variant="caption" sx={{ opacity: 0.55 }}>
+      <Typography
+        variant="caption"
+        sx={(theme) => ({ position: 'relative', color: theme.vars.palette.hero.muted })}
+      >
         Навчальний прототип електронного сервісу
       </Typography>
     </Stack>
@@ -93,7 +138,14 @@ export function AuthCard({ title, maxWidth = 420, children }) {
         <Box sx={{ display: { md: 'none' }, mb: 3 }}>
           <BrandLogo />
         </Box>
-        <Card sx={{ width: '100%', maxWidth, borderRadius: '24px' }}>
+        <Card
+          sx={(theme) => ({
+            width: '100%',
+            maxWidth,
+            borderRadius: '20px',
+            boxShadow: theme.vars.palette.glow.auth,
+          })}
+        >
           <CardContent sx={{ p: { xs: 2.5, sm: 4 }, '&:last-child': { pb: { xs: 2.5, sm: 4 } } }}>
             <Typography variant="h5" component="h1" sx={{ mb: 2.5 }}>
               {title}

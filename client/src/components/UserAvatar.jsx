@@ -1,12 +1,11 @@
 import { Avatar } from '@mui/material';
-import { avatarHue, initialsOf } from '../utils/avatar.js';
+import { initialsOf } from '../utils/avatar.js';
 
-// Аватар-заглушка облікового запису: ініціали на кольоровому тлі (utils/avatar.js).
-// Текст має контраст з тлом ≥ 4,5 : 1 в обох схемах.
+// Аватар-заглушка облікового запису: ініціали на нейтральному тлі з тонкою рамкою
+// (монохромне оформлення). Текст має контраст з тлом ≥ 4,5 : 1 в обох схемах.
 
 // Аватар декоративний (ПІБ завжди виводиться поруч текстом), тому прихований від читачів екрана
 export function UserAvatar({ user, size = 40, sx }) {
-  const hue = avatarHue(user);
   return (
     <Avatar
       aria-hidden="true"
@@ -15,12 +14,9 @@ export function UserAvatar({ user, size = 40, sx }) {
           width: size,
           height: size,
           fontSize: size * 0.38,
-          color: `hsl(${hue} 55% 26%)`,
-          background: `linear-gradient(135deg, hsl(${hue} 85% 88%), hsl(${(hue + 30) % 360} 80% 80%))`,
-          ...theme.applyStyles('dark', {
-            color: `hsl(${hue} 90% 90%)`,
-            background: `linear-gradient(135deg, hsl(${hue} 45% 34%), hsl(${(hue + 30) % 360} 45% 26%))`,
-          }),
+          color: theme.vars.palette.text.primary,
+          backgroundColor: theme.vars.palette.surface.subtle,
+          border: `1px solid ${theme.vars.palette.divider}`,
         }),
         ...(Array.isArray(sx) ? sx : [sx]),
       ]}

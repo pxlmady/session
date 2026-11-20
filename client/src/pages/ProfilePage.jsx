@@ -64,7 +64,7 @@ export default function ProfilePage() {
     <>
       <PageHeader title="Профіль" />
       <Card variant="outlined" sx={{ maxWidth: 640, overflow: 'hidden' }}>
-        {/* Шапка профілю: візерунок з аватара-заглушки, далі аватар, ПІБ і роль */}
+        {/* Шапка профілю: смуга з тонкими колами, далі аватар, ПІБ і роль */}
         <AvatarPattern user={user} />
         <CardContent sx={{ p: { xs: 2.5, sm: 4 }, pt: '0 !important' }}>
           <Stack
@@ -75,12 +75,16 @@ export default function ProfilePage() {
             <UserAvatar
               user={user}
               size={84}
-              sx={{
+              sx={(theme) => ({
                 mt: '-44px',
                 border: 4,
                 borderColor: 'background.paper',
                 boxSizing: 'content-box',
-              }}
+                boxShadow: `0 0 0 1px ${theme.vars.palette.divider}`,
+                ...theme.applyStyles('dark', {
+                  boxShadow: `0 0 0 1px ${theme.vars.palette.divider}, 0 0 30px -6px rgba(136 192 208 / 0.45)`,
+                }),
+              })}
             />
             <Box sx={{ minWidth: 0, pt: { sm: 1.5 } }}>
               <Typography variant="h6" component="p" sx={{ wordBreak: 'break-word' }}>
